@@ -6,7 +6,31 @@
       "Skill(superpowers:subagent-driven-development)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(node:*)",
+      "Bash(dir:*)",
+      "Bash(npm run lint)",
+      "Bash(findstr:*)",
+      "Bash(git -C \"C:\\\\Users\\\\Ernest\\\\Downloads\\\\ParallelStoryBuilder\" log --oneline -10)",
+      "Bash(git -C \"C:\\\\Users\\\\Ernest\\\\Downloads\\\\ParallelStoryBuilder\" show --stat 91905d8)",
+      "Bash(git -C \"C:\\\\Users\\\\Ernest\\\\Downloads\\\\ParallelStoryBuilder\" log:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run)",
+      "Bash(npx eslint:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(ls:*)",
+      "Bash(npm view:*)",
+      "Bash(npm search:*)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(npx expo:*)",
+      "Bash(test:*)",
+      "Bash(taskkill:*)",
+      "Skill(commit-commands:commit-push-pr)",
+      "Bash(git checkout:*)"
     ]
   }
 }

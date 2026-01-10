@@ -16,6 +16,7 @@ export interface Profile {
 
 export interface Story {
   id: string;
+  title: string;
   theme: Theme;
   created_by: string;
   pairing_code: string;

@@ -10,9 +10,10 @@ interface StoriesState {
   error: string | null;
   currentChapter: Chapter | null;
   subscription: RealtimeChannel | null;
+  isConfigured: boolean;
   fetchStories: () => Promise<void>;
   fetchStory: (storyId: string) => Promise<void>;
-  createStory: (theme: Theme) => Promise<string>;
+  createStory: (title: string, theme: Theme) => Promise<string>;
   joinStory: (pairingCode: string) => Promise<void>;
   setCurrentStory: (story: StoryWithMembers | null) => void;
   subscribeToStory: (storyId: string) => Promise<void>;
@@ -24,6 +25,13 @@ const generatePairingCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// Check if Supabase is configured
+const isSupabaseConfigured = (): boolean => {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+  const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+  return url !== '' && !url.includes('your-project') && key !== '' && !key.includes('your-anon');
+};
+
 export const useStoriesStore = create<StoriesState>((set, get) => ({
   stories: [],
   currentStory: null,
@@ -31,8 +39,13 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   error: null,
   currentChapter: null,
   subscription: null,
+  isConfigured: isSupabaseConfigured(),
 
   fetchStories: async () => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -83,6 +96,10 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   },
 
   fetchStory: async (storyId: string) => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
       const { data: storyData, error: storyError } = await supabase
@@ -115,7 +132,11 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
     }
   },
 
-  createStory: async (theme: Theme) => {
+  createStory: async (title: string, theme: Theme) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase is not configured. Please set up your .env file.');
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -127,6 +148,7 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
     const { data: storyData, error: storyError } = await supabase
       .from('stories')
       .insert({
+        title,
         created_by: user.id,
         theme,
         pairing_code: pairingCode,
@@ -153,6 +175,10 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   },
 
   joinStory: async (pairingCode: string) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase is not configured. Please set up your .env file.');
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -210,6 +236,10 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   },
 
   subscribeToStory: async (storyId: string) => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
     const { subscription: existingSub } = get();
 
     if (existingSub) {
@@ -260,6 +290,10 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   },
 
   fetchLatestChapter: async (storyId: string) => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('chapters')

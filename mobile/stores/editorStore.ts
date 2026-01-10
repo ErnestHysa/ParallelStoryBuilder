@@ -40,7 +40,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ isEnhancing: true });
 
     try {
-      const { data, error } = await supabase.functions.invoke<{ enhancedContent: string }>('enhance-chapter', {
+      const { data, error } = await supabase.functions.invoke<{ enhancedContent: string }>('ai-enhance', {
         body: {
           content: draftContent,
           storyId,
