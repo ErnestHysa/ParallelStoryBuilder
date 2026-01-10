@@ -14,11 +14,11 @@ const secureStorageAdapter = {
   getItem: (key: string) => {
     return SecureStore.getItemAsync(key);
   },
-  setItem: (key: string, value: string) => {
-    SecureStore.setItemAsync(key, value);
+  setItem: async (key: string, value: string) => {
+    return await SecureStore.setItemAsync(key, value);
   },
-  removeItem: (key: string) => {
-    SecureStore.deleteItemAsync(key);
+  removeItem: async (key: string) => {
+    return await SecureStore.deleteItemAsync(key);
   },
 };
 
