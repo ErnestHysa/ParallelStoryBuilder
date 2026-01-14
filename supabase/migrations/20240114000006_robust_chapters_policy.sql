@@ -2,13 +2,14 @@
 -- Also ensure is_member_of_story is working correctly
 
 -- 1. Ensure we have a robust creator check function
-CREATE OR REPLACE FUNCTION public.is_story_creator(p_story_id UUID)
+-- Using the same parameter name 'story_uuid' as in previous migrations to avoid SQL error 42P13
+CREATE OR REPLACE FUNCTION public.is_story_creator(story_uuid UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 
     FROM public.stories 
-    WHERE id = p_story_id 
+    WHERE id = story_uuid 
     AND created_by = auth.uid()
   );
 END;
