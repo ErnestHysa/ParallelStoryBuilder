@@ -1,5 +1,8 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+// supabase/functions/ai-character-avatar/index.ts
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,12 +21,17 @@ interface AvatarRequest {
   storyId?: string
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -48,27 +56,32 @@ serve(async (req) => {
       )
     }
 
-    // Content safety check
-    const moderationCheck = await fetch('https://api.openai.com/v1/moderations', {
+    // Safety check using Gemini
+    const safetyPrompt = `Analyze this character description for safety violations (hate speech, sexual explicitness, or extreme violence): "${characterName}: ${characterDescription}". 
+Return ONLY "SAFE" if it is safe, or "UNSAFE: [reason]" if it is not.`;
+
+    const safetyCheck = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
         'Content-Type': 'application/json',
+        'x-goog-api-key': geminiApiKey,
       },
       body: JSON.stringify({
-        input: `${characterName}: ${characterDescription}`
+        contents: [{ parts: [{ text: safetyPrompt }] }],
       }),
-    })
+    });
 
-    const moderationResult = await moderationCheck.json()
-    if (moderationResult.results[0]?.flagged) {
+    const safetyData = await safetyCheck.json();
+    const safetyResult = safetyData.candidates?.[0]?.content?.parts?.[0]?.text || 'SAFE';
+
+    if (safetyResult.includes('UNSAFE')) {
       return new Response(
         JSON.stringify({ error: 'Character description violates safety guidelines' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
 
-    // Create enhanced prompt based on style
+    // Create enhanced prompt
     let styleDescription = ''
     switch (style) {
       case 'cartoon':
@@ -84,10 +97,10 @@ serve(async (req) => {
         styleDescription = 'photorealistic portrait, professional photography, detailed features'
     }
 
-    const enhancedPrompt = `Portrait of ${characterName}, ${gender || ''} ${age || ''}. ${characterDescription}. Professional character portrait, ${styleDescription}, eye-level view, studio lighting, high quality, detailed facial features, expressive eyes`
+    const basePrompt = `Portrait of ${characterName}, ${gender || ''} ${age || ''}. ${characterDescription}. Professional character portrait, ${styleDescription}, eye-level view, studio lighting, high quality, detailed facial features, expressive eyes`;
 
     // Cache check
-    const cacheKey = `avatar:${Buffer.from(enhancedPrompt).toString('base64')}`
+    const cacheKey = `avatar:${btoa(basePrompt).substring(0, 32)}`
     const cachedResponse = await supabaseClient
       .from('ai_cache')
       .select('response')
@@ -106,50 +119,31 @@ serve(async (req) => {
       )
     }
 
-    // Call OpenAI API
-    const openAIResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: enhancedPrompt,
-        n: 1,
-        size: `${width}x${height}`,
-        quality: 'hd',
-        response_format: 'url',
-        user: userId,
-      }),
-    })
+    // Generate Image using Pollinations.ai (free & high quality alternative)
+    // Format: https://image.pollinations.ai/prompt/[prompt]?width=[width]&height=[height]&model=[model]&seed=[seed]&nologo=true
+    const seed = Math.floor(Math.random() * 1000000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(basePrompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
 
-    if (!openAIResponse.ok) {
-      const error = await openAIResponse.text()
-      console.error('OpenAI API error:', error)
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate character avatar' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
-    }
-
-    const openAIResult = await openAIResponse.json()
+    const result = {
+      data: [{ url: imageUrl }]
+    };
 
     // Save to cache
+    const estimatedCost = 0.0001; // Effectively free
     await supabaseClient
       .from('ai_cache')
       .insert({
         cache_key: cacheKey,
-        request: enhancedPrompt,
-        response: openAIResult,
+        request: basePrompt.substring(0, 500),
+        response: result,
         type: 'character-avatar',
         user_id: userId,
         story_id: storyId,
         metadata: { character_name: characterName, style },
-        cost: 0.04, // DALL-E 3 cost estimate
+        cost: estimatedCost,
       })
 
-    // Log character usage for consistency tracking
+    // Log character usage
     if (userId && storyId) {
       await supabaseClient
         .from('story_characters')
@@ -157,7 +151,7 @@ serve(async (req) => {
           story_id: storyId,
           character_name: characterName,
           character_description: characterDescription,
-          avatar_url: openAIResult.data[0]?.url,
+          avatar_url: imageUrl,
           style,
           user_id: userId,
           last_updated: new Date().toISOString(),
@@ -172,7 +166,7 @@ serve(async (req) => {
         p_user_id: userId,
         p_function_name: 'ai-character-avatar',
         p_tokens_used: 0,
-        p_cost: 0.04,
+        p_cost: estimatedCost,
         p_story_id: storyId,
       })
     }
@@ -180,7 +174,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        data: openAIResult,
+        data: result,
         cached: false,
         character_name: characterName
       }),
@@ -189,7 +183,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Character avatar generation error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }

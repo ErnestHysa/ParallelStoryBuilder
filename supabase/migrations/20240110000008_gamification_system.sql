@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS public.achievement_definitions (
     'tokens_spent',
     'stories_created',
     'chapters_read',
-    'badges_earned'
+    'badges_earned',
+    'secret'
   )),
   condition_value INTEGER NOT NULL CHECK (condition_value > 0),
   rarity TEXT NOT NULL DEFAULT 'common' CHECK (rarity IN ('common', 'rare', 'epic', 'legendary')),
@@ -60,8 +61,8 @@ INSERT INTO public.achievement_definitions (name, description, icon, category, c
 ('Wordsmith', 'Write 10,000 total words', '✍️', 'writing', 'total_words', 10000, 'common', 100, '#4ade80', 'You''re finding your voice!'),
 ('Storyteller', 'Write 50 chapters across different stories', '📖', 'writing', 'chapters_written', 50, 'rare', 250, '#3b82f6', 'A true storyteller emerges!'),
 ('Epic Tale', 'Write 100,000 total words', '🏆', 'writing', 'total_words', 100000, 'rare', 500, '#3b82f6', 'Crafting epics!'),
-('Master Wordsmith', 'Write 1,000,000 total words', '🔥', 'epic', 'total_words', 1000000, 'epic', 1000, '#f59e0b', 'Words flow like water!'),
-('Legendary Author', 'Write 10,000,000 total words', '👑', 'legendary', 'total_words', 10000000, 'legendary', 5000, '#dc2626', 'A literary legend is born!'),
+('Master Wordsmith', 'Write 1,000,000 total words', '🔥', 'writing', 'total_words', 1000000, 'epic', 1000, '#f59e0b', 'Words flow like water!'),
+('Legendary Author', 'Write 10,000,000 total words', '👑', 'writing', 'total_words', 10000000, 'legendary', 5000, '#dc2626', 'A literary legend is born!'),
 
 -- Collaboration achievements
 ('Team Player', 'Join 5 different stories', '🤝', 'collaboration', 'stories_joined', 5, 'common', 50, '#4ade80', 'Ready to collaborate!'),
@@ -71,13 +72,13 @@ INSERT INTO public.achievement_definitions (name, description, icon, category, c
 
 -- Exploration achievements
 ('Explorer', 'Join 10 different genres', '🗺️', 'exploration', 'stories_joined', 10, 'common', 50, '#4ade80', 'Exploring new worlds!'),
-('Genre Master', 'Try 50 different genres', '🎭', 'rare', 'stories_joined', 50, 'rare', 400, '#3b82f6', 'A master of all genres!'),
+('Genre Master', 'Try 50 different genres', '🎭', 'exploration', 'stories_joined', 50, 'rare', 400, '#3b82f6', 'A master of all genres!'),
 
 -- Milestone achievements
 ('First Day', 'Write for 7 consecutive days', '📅', 'milestone', 'consecutive_days', 7, 'common', 100, '#4ade80', 'Building a habit!'),
 ('Week Warrior', 'Write for 30 consecutive days', '🏃', 'milestone', 'consecutive_days', 30, 'rare', 300, '#3b82f6', 'Consistency champion!'),
-('Marathon Writer', 'Write for 100 consecutive days', '🚀', 'epic', 'consecutive_days', 100, 'epic', 800, '#f59e0b', 'Unstoppable dedication!'),
-('Ultra Marathon', 'Write for 365 consecutive days', '💪', 'legendary', 'consecutive_days', 365, 'legendary', 2000, '#dc2626', 'Writing legend!'),
+('Marathon Writer', 'Write for 100 consecutive days', '🚀', 'milestone', 'consecutive_days', 100, 'epic', 800, '#f59e0b', 'Unstoppable dedication!'),
+('Ultra Marathon', 'Write for 365 consecutive days', '💪', 'milestone', 'consecutive_days', 365, 'legendary', 2000, '#dc2626', 'Writing legend!'),
 
 -- Secret achievements
 ('Night Owl', 'Write between 2 AM and 5 AM', '🦉', 'milestone', 'secret', 1, 'epic', 600, '#f59e0b', 'Working the night shift!'),
@@ -213,12 +214,13 @@ CREATE OR REPLACE FUNCTION public.calculate_user_points(
 )
 RETURNS INTEGER AS $$
 BEGIN
-  SELECT COALESCE(SUM(achievement_definitions.points), 0)
-  INTO 1
-  FROM public.user_achievements
-  JOIN public.achievement_definitions ON user_achievements.achievement_id = achievement_definitions.id
-  WHERE user_achievements.user_id = p_user_id
-    AND user_achievements.is_unlocked;
+  RETURN (
+    SELECT COALESCE(SUM(achievement_definitions.points), 0)
+    FROM public.user_achievements
+    JOIN public.achievement_definitions ON user_achievements.achievement_id = achievement_definitions.id
+    WHERE user_achievements.user_id = p_user_id
+      AND user_achievements.is_unlocked
+  );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -265,7 +267,7 @@ EXECUTE FUNCTION public.trigger_writing_streak_update();
 -- Create view for user achievements summary
 CREATE OR REPLACE VIEW public.user_achievements_summary AS
 SELECT ua.user_id,
-       p.username,
+       p.display_name,
        COUNT(ua.id) as total_achievements,
        COUNT(CASE WHEN ua.is_unlocked THEN 1 END) as unlocked_achievements,
        SUM(ad.points) as total_points,
@@ -274,12 +276,12 @@ SELECT ua.user_id,
 FROM public.user_achievements ua
 JOIN public.profiles p ON ua.user_id = p.id
 JOIN public.achievement_definitions ad ON ua.achievement_id = ad.id
-GROUP BY ua.user_id, p.username;
+GROUP BY ua.user_id, p.display_name;
 
 -- Create view for leaderboard
 CREATE OR REPLACE VIEW public.leaderboard AS
 SELECT p.id,
-       p.username,
+       p.display_name,
        p.avatar_url,
        COALESCE(usa.total_points, 0) as total_points,
        COALESCE(usa.unlocked_achievements, 0) as achievements_count,

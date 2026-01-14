@@ -196,7 +196,7 @@ RETURNS TABLE(
   file_name TEXT,
   caption TEXT,
   alt_text TEXT,
-  position INTEGER,
+  "position" INTEGER,
   created_at TIMESTAMPTZ
 ) AS $$
 BEGIN
@@ -261,12 +261,11 @@ EXECUTE FUNCTION public.cleanup_old_media();
 CREATE OR REPLACE VIEW public.chapter_media_with_details AS
 SELECT
   cm.*,
-  c.title as chapter_title,
+  c.chapter_number as chapter_number,
   c.content as chapter_content,
   s.id as story_id,
-  s.title as story_title,
-  s.slug as story_slug,
-  u.username as username,
+  s.theme as story_theme,
+  u.display_name as display_name,
   u.avatar_url as user_avatar_url
 FROM public.chapter_media cm
 JOIN public.chapters c ON cm.chapter_id = c.id
@@ -282,8 +281,7 @@ JOIN public.chapters c ON cm.chapter_id = c.id
 JOIN public.stories s ON c.story_id = s.id
 WHERE cm.status = 'active'
   AND cm.is_featured = TRUE
-  AND s.visibility = 'public'
-  AND c.is_published = TRUE
+  AND s.status = 'active'
 ORDER BY cm.created_at DESC
 LIMIT 100;
 
@@ -295,22 +293,21 @@ DECLARE
 BEGIN
   SELECT XMLAGG(
     XMLELEMENT(
-      "url",
-      XMLELEMENT("loc", CONCAT('https://parallelstory.app/media/', cm.storage_path)),
-      XMLELEMENT("lastmod", TO_CHAR(cm.created_at, 'YYYY-MM-DD')),
-      XMLELEMENT("changefreq", 'monthly')
+      NAME url,
+      XMLELEMENT(NAME loc, CONCAT('https://parallelstory.app/media/', cm.storage_path)),
+      XMLELEMENT(NAME lastmod, TO_CHAR(cm.created_at, 'YYYY-MM-DD')),
+      XMLELEMENT(NAME changefreq, 'monthly')
     )
   ) INTO media_items
   FROM public.chapter_media cm
   JOIN public.chapters c ON cm.chapter_id = c.id
   JOIN public.stories s ON c.story_id = s.id
   WHERE cm.status = 'active'
-    AND s.visibility = 'public'
-    AND c.is_published = TRUE
+    AND s.status = 'active'
     AND cm.created_at > NOW() - INTERVAL '1 year';
 
   RETURN XMLELEMENT(
-    "urlset",
+    NAME urlset,
     XMLATTRIBUTES('https://www.sitemaps.org/schemas/sitemap/0.9' AS "xmlns"),
     COALESCE(media_items, '')
   );

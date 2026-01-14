@@ -84,17 +84,8 @@ export default function RegisterPage() {
       if (error) throw error;
 
       // Create profile
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: data.user.id,
-            email: data.user.email!,
-            display_name: formData.displayName,
-          }]);
-
-        if (profileError) throw profileError;
-      }
+      // Profile creation is handled by database trigger
+      // No manual insert needed
 
       toast.success('Welcome to Parallel! Check your email to verify your account.');
       router.push('/stories');

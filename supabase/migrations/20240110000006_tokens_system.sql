@@ -233,7 +233,7 @@ $$ LANGUAGE plpgsql;
 -- Create a view for user token summary
 CREATE OR REPLACE VIEW public.user_token_summary AS
 SELECT ut.user_id,
-       u.username,
+       u.display_name,
        ut.total_tokens,
        ut.available_tokens,
        ut.ai_tokens,
@@ -246,7 +246,7 @@ SELECT ut.user_id,
 FROM public.user_tokens ut
 JOIN public.profiles u ON ut.user_id = u.id
 LEFT JOIN public.token_transactions tt ON ut.user_id = tt.user_id
-GROUP BY ut.id, u.username;
+GROUP BY ut.id, u.display_name;
 
 -- Grant permissions
 GRANT SELECT, INSERT ON public.user_tokens TO authenticated;

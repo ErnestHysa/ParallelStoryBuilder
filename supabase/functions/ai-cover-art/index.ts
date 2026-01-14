@@ -1,4 +1,5 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+// supabase/functions/ai-cover-art/index.ts
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -16,14 +17,7 @@ interface CoverArtRequest {
   storyId?: string
 }
 
-interface OpenAIResponse {
-  data: Array<{
-    url: string
-    revised_prompt?: string
-  }>
-}
-
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -48,7 +42,7 @@ serve(async (req) => {
       : `Professional book cover: ${prompt}. ${style}, high quality, detailed illustration, cinematic lighting`
 
     // Cache check
-    const cacheKey = `cover-art:${Buffer.from(enhancedPrompt).toString('base64')}`
+    const cacheKey = `cover-art:${btoa(enhancedPrompt).substring(0, 32)}`
     const cachedResponse = await supabaseClient
       .from('ai_cache')
       .select('response')
@@ -66,46 +60,26 @@ serve(async (req) => {
       )
     }
 
-    // Call OpenAI API
-    const openAIResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: enhancedPrompt,
-        n: 1,
-        size: `${width}x${height}`,
-        quality: 'hd',
-        response_format: 'url',
-        user: userId,
-      }),
-    })
+    // Generate Image using Pollinations.ai (free & high quality alternative)
+    const seed = Math.floor(Math.random() * 1000000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
 
-    if (!openAIResponse.ok) {
-      const error = await openAIResponse.text()
-      console.error('OpenAI API error:', error)
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate cover art' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
-    }
-
-    const openAIResult: OpenAIResponse = await openAIResponse.json()
+    const result = {
+      data: [{ url: imageUrl }]
+    };
 
     // Save to cache
+    const estimatedCost = 0.0001;
     await supabaseClient
       .from('ai_cache')
       .insert({
         cache_key: cacheKey,
-        request: enhancedPrompt,
-        response: openAIResult,
+        request: enhancedPrompt.substring(0, 500),
+        response: result,
         type: 'cover-art',
         user_id: userId,
         story_id: storyId,
-        cost: 0.04, // DALL-E 3 cost estimate
+        cost: estimatedCost,
       })
 
     // Log usage
@@ -114,7 +88,7 @@ serve(async (req) => {
         p_user_id: userId,
         p_function_name: 'ai-cover-art',
         p_tokens_used: 0,
-        p_cost: 0.04,
+        p_cost: estimatedCost,
         p_story_id: storyId,
       })
     }
@@ -122,7 +96,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        data: openAIResult,
+        data: result,
         cached: false
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -130,7 +104,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Cover art generation error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }

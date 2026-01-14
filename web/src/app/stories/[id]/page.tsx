@@ -59,10 +59,11 @@ export default function StoryDetailPage() {
         .from('stories')
         .select(`
           *,
-          members (
+          *,
+          story_members (
             user_id,
             role,
-            profile (
+            profile:profiles (
               id,
               display_name,
               avatar_url
@@ -77,7 +78,7 @@ export default function StoryDetailPage() {
       const storyDataAny = storyData as any;
       setStory({
         ...storyDataAny,
-        members: storyDataAny?.members?.map((m: any) => ({
+        members: storyDataAny?.story_members?.map((m: any) => ({
           ...m,
           profile: m.profile,
         })) || [],

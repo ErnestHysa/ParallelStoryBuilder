@@ -414,8 +414,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a scheduled job for cleanup (runs daily at 3 AM)
-SELECT cron.schedule('0 3 * * *', $$SELECT public.cleanup_old_analytics()$$);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    -- Schedule cleanup job (using anonymous job if name not supported or simply 2 args)
+    -- Using PERFORM to discard result
+    PERFORM cron.schedule('0 3 * * *', $cmd$SELECT public.cleanup_old_analytics()$cmd$);
+  ELSE
+    RAISE NOTICE 'pg_cron extension not available, skipping scheduled job creation';
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Could not schedule cron job: %', SQLERRM;
+END;
+$$;
 
 -- Create view for daily analytics summary
 CREATE OR REPLACE VIEW public.daily_analytics_summary AS

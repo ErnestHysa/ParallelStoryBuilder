@@ -100,7 +100,7 @@ BEGIN
 
   RETURN COALESCE(v_preferences, jsonb_build_object('error', 'User not found'));
 END;
-$LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Function to complete onboarding
 CREATE OR REPLACE FUNCTION public.complete_onboarding(
@@ -234,7 +234,7 @@ FROM public.profiles p;
 CREATE OR REPLACE VIEW public.onboarding_progress AS
 SELECT
   p.id,
-  p.username,
+  p.display_name,
   p.email,
   CASE
     WHEN p.onboarding_completed THEN 'Completed'
@@ -243,11 +243,11 @@ SELECT
     ELSE 'Not Started'
   END as progress_status,
   COALESCE(
-    (SELECT COUNT(*) FROM public.story_participants WHERE user_id = p.id),
+    (SELECT COUNT(*) FROM public.story_members WHERE user_id = p.id),
     0
   ) as stories_joined,
   COALESCE(
-    (SELECT COUNT(*) FROM public.chapters WHERE user_id = p.id),
+    (SELECT COUNT(*) FROM public.chapters WHERE author_id = p.id),
     0
   ) as chapters_written,
   COALESCE(

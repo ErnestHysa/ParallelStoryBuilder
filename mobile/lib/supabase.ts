@@ -2,8 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Database } from './types';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// Fallback values in case .env is not loaded (e.g. during specific build phases or if restart needed)
+const FALLBACK_SUPABASE_URL = 'https://aljlohdswvemsxlvayvp.supabase.co';
+const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_F6Qb9Wv_yN6g8yipRXrQOw_NXsMd80u';
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
 
 // Secure storage adapter for session persistence
 // Note: Using a simple in-memory cache for synchronous getItem

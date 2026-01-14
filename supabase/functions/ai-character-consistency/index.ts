@@ -140,11 +140,11 @@ serve(async (req) => {
               for (const match of matches) {
                 const words = match.toLowerCase().split(' ')
                 const traitIndex = words.indexOf('is') !== -1 ? words.indexOf('is') + 1 :
-                                 words.indexOf('was') !== -1 ? words.indexOf('was') + 1 :
-                                 words.indexOf('has') !== -1 ? words.indexOf('has') + 1 :
-                                 words.indexOf('felt') !== -1 ? words.indexOf('felt') + 1 :
-                                 words.indexOf('seems') !== -1 ? words.indexOf('seems') + 1 :
-                                 words.indexOf('appears') !== -1 ? words.indexOf('appears') + 1 : -1
+                  words.indexOf('was') !== -1 ? words.indexOf('was') + 1 :
+                    words.indexOf('has') !== -1 ? words.indexOf('has') + 1 :
+                      words.indexOf('felt') !== -1 ? words.indexOf('felt') + 1 :
+                        words.indexOf('seems') !== -1 ? words.indexOf('seems') + 1 :
+                          words.indexOf('appears') !== -1 ? words.indexOf('appears') + 1 : -1
 
                 if (traitIndex !== -1 && traitIndex < words.length) {
                   const trait = words[traitIndex]
@@ -214,7 +214,7 @@ serve(async (req) => {
                 character: character.character_name,
                 issue: `Contradictory emotions: ${pos} and ${neg}`,
                 severity: 'high',
-                suggestion: 'Consider the character's emotional consistency and development arc'
+                suggestion: "Consider the character's emotional consistency and development arc"
               })
             }
           }

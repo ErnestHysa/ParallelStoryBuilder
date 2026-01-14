@@ -1,5 +1,8 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+// supabase/functions/ai-narrative-analysis/index.ts
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,12 +17,17 @@ interface AnalysisRequest {
   includeDetailedBreakdown?: boolean
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -40,28 +48,8 @@ serve(async (req) => {
       )
     }
 
-    // Content safety check
-    const moderationCheck = await fetch('https://api.openai.com/v1/moderations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        input: storyContent.substring(0, 1000)
-      }),
-    })
-
-    const moderationResult = await moderationCheck.json()
-    if (moderationResult.results[0]?.flagged) {
-      return new Response(
-        JSON.stringify({ error: 'Content violates safety guidelines' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
-    }
-
     // Cache check
-    const contentHash = Buffer.from(storyContent).toString('base64').substring(0, 32)
+    const contentHash = btoa(storyContent.substring(0, 500)).substring(0, 32)
     const cacheKey = `narrative-analysis:${contentHash}:${includeDetailedBreakdown}`
     const cachedResponse = await supabaseClient
       .from('ai_cache')
@@ -81,156 +69,89 @@ serve(async (req) => {
     }
 
     // Prepare detailed prompt
-    const analysisPrompt = `
-Analyze the following narrative content and provide insights:
+    const analysisPrompt = `Analyze the following narrative content and provide insights as an expert literary analyst.
+Story Content: "${storyContent.substring(0, 15000)}"
 
-Story Content:
-${storyContent.substring(0, 8000)}
+${includeDetailedBreakdown ? 'Provide a comprehensive analysis covering: Story Arc, Character Development, Writing Style, Themes and Motifs, and Strengths/Improvements.' : 'Provide a concise analysis of narrative structure, character development, writing style, and themes.'}
 
-${includeDetailedBreakdown ? `
-Please provide a comprehensive analysis covering:
-
-1. **Story Arc Analysis:**
-   - Identify the inciting incident, rising action, climax, falling action, and resolution
-   - Plot pacing and tension analysis
-   - Narrative structure assessment
-
-2. **Character Development:**
-   - Main character traits and evolution
-   - Character relationships dynamics
-   - Character motivations and growth
-
-3. **Writing Style Analysis:**
-   - Tone and mood assessment
-   - Dialogue effectiveness
-   - Description quality
-   - Pacing and rhythm
-
-4. **Themes and Motifs:**
-   - Identified themes
-   - Symbolic elements
-   - Underlying messages
-
-5. **Strengths and Improvement Areas:**
-   - What works well
-   - Suggested improvements
-   - Common storytelling patterns
-
-Provide specific examples from the text to support your analysis. Use bullet points for clarity and maintain a constructive tone.
-` : `
-Please provide a concise analysis of:
-- Overall narrative structure
-- Character development status
-- Writing style assessment
-- Key themes and suggestions for improvement
-`}
-
-Format your response as JSON with these fields:
+Format your response as a valid JSON object with the following structure:
 {
   "narrative_structure": {
     "arc_status": "string",
     "pacing_assessment": "string",
-    "tension_level": "number"
+    "tension_level": number (0-100)
   },
   "character_analysis": {
     "main_character_development": "string",
     "relationship_dynamics": "string",
-    "character_depth": "number"
+    "character_depth": number (0-100)
   },
   "writing_style": {
     "tone": "string",
-    "dialogue_effectiveness": "number",
-    "description_quality": "number",
+    "dialogue_effectiveness": number (0-100),
+    "description_quality": number (0-100),
     "pacing": "string"
   },
   "themes": ["string"],
   "suggestions": ["string"],
   "overall_score": {
-    "storytelling": "number",
-    "character_development": "number",
-    "writing_quality": "number"
+    "storytelling": number (0-100),
+    "character_development": number (0-100),
+    "writing_quality": number (0-100)
   }
 }
-`
+Return ONLY the JSON.`;
 
-    // Call OpenAI API
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call Gemini API
+    const geminiResponse = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
         'Content-Type': 'application/json',
+        'x-goog-api-key': geminiApiKey,
       },
       body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          { role: 'system', content: 'You are an expert literary analyst. Provide thoughtful, detailed analysis of narrative content.' },
-          { role: 'user', content: analysisPrompt }
+        contents: [{ parts: [{ text: analysisPrompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          responseMimeType: 'application/json',
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
         ],
-        max_tokens: 2000,
-        temperature: 0.3,
-        top_p: 1,
       }),
-    })
+    });
 
-    if (!openAIResponse.ok) {
-      const error = await openAIResponse.text()
-      console.error('OpenAI API error:', error)
-      return new Response(
-        JSON.stringify({ error: 'Failed to generate narrative analysis' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
+    if (!geminiResponse.ok) {
+      const error = await geminiResponse.text()
+      console.error('Gemini API error:', error)
+      return new Response(JSON.stringify({ error: 'AI service unavailable' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const openAIResult = await openAIResponse.json()
-    let analysis: any
+    const geminiData = await geminiResponse.json();
+    const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
 
+    let analysis: any;
     try {
-      // Extract JSON from response
-      const responseText = openAIResult.choices[0]?.message?.content || '{}'
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        analysis = JSON.parse(jsonMatch[0])
-      } else {
-        throw new Error('Invalid JSON response')
-      }
-    } catch (parseError) {
-      // Fallback to structured format
-      analysis = {
-        narrative_structure: {
-          arc_status: 'Analysis incomplete',
-          pacing_assessment: 'Unable to assess',
-          tension_level: 0
-        },
-        character_analysis: {
-          main_character_development: 'Analysis unavailable',
-          relationship_dynamics: 'Analysis unavailable',
-          character_depth: 0
-        },
-        writing_style: {
-          tone: 'Analysis unavailable',
-          dialogue_effectiveness: 0,
-          description_quality: 0,
-          pacing: 'Analysis unavailable'
-        },
-        themes: [],
-        suggestions: ['Unable to generate detailed analysis due to response format'],
-        overall_score: {
-          storytelling: 0,
-          character_development: 0,
-          writing_quality: 0
-        }
-      }
+      analysis = JSON.parse(responseText.replace(/```json|```/g, '').trim());
+    } catch (e) {
+      console.error('Failed to parse Gemini response as JSON:', responseText);
+      throw new Error('Invalid analysis format received from AI');
     }
 
-    const tokensUsed = openAIResult.usage?.total_tokens || 0
-    const estimatedCost = (tokensUsed / 1000) * 0.03 // gpt-4 cost
+    const estimatedCost = 0.0002;
 
     // Save to cache
     await supabaseClient
       .from('ai_cache')
       .insert({
         cache_key: cacheKey,
-        request: analysisPrompt,
+        request: analysisPrompt.substring(0, 500),
         response: analysis,
         type: 'narrative-analysis',
         user_id: userId,
@@ -251,7 +172,7 @@ Format your response as JSON with these fields:
           story_id: storyId,
           chapter_id: chapterId,
           analysis_data: analysis,
-          tokens_used: tokensUsed,
+          tokens_used: 0,
           cost: estimatedCost,
           generated_at: new Date().toISOString(),
         })
@@ -262,7 +183,7 @@ Format your response as JSON with these fields:
       await supabaseClient.rpc('log_ai_usage', {
         p_user_id: userId,
         p_function_name: 'ai-narrative-analysis',
-        p_tokens_used: tokensUsed,
+        p_tokens_used: 0,
         p_cost: estimatedCost,
         p_story_id: storyId,
       })
@@ -273,7 +194,6 @@ Format your response as JSON with these fields:
         success: true,
         data: analysis,
         cached: false,
-        tokens_used: tokensUsed,
         estimated_cost: estimatedCost,
         chapter_id: chapterId
       }),
@@ -282,7 +202,7 @@ Format your response as JSON with these fields:
   } catch (error) {
     console.error('Narrative analysis error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }

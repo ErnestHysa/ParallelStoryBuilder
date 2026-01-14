@@ -166,8 +166,8 @@ BEGIN
 
     -- Handle overnight quiet hours
     DECLARE
-      v_start TIME := to_time(v_preferences->>'quiet_hours_start', 'HH24:MI');
-      v_end TIME := to_time(v_preferences->>'quiet_hours_end', 'HH24:MI');
+      v_start TIME := (v_preferences->>'quiet_hours_start')::TIME;
+      v_end TIME := (v_preferences->>'quiet_hours_end')::TIME;
     BEGIN
       IF v_start >= v_end THEN
         -- Quiet hours span midnight (e.g., 22:00 to 08:00)
@@ -220,9 +220,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a scheduled job for cleanup
--- This runs daily at 2 AM
-SELECT cron.schedule('0 2 * * *', $$SELECT public.cleanup_inactive_push_tokens()$$);
+-- Create a scheduled job for cleanup (requires pg_cron extension)
+-- This runs daily at 2 AM (only if cron extension is available)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule('cleanup_inactive_push_tokens', '0 2 * * *', 'SELECT public.cleanup_inactive_push_tokens()');
+  ELSE
+    RAISE NOTICE 'pg_cron extension not available, skipping scheduled job creation';
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Could not schedule cron job: %', SQLERRM;
+END;
+$$;
 
 -- Function to get user notification settings summary
 CREATE OR REPLACE FUNCTION public.get_notification_settings(
@@ -272,7 +283,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE VIEW public.push_tokens_summary AS
 SELECT
   pt.user_id,
-  p.username,
+  p.display_name,
   p.email,
   COUNT(pt.id) as token_count,
   COUNT(CASE WHEN pt.is_active THEN 1 END) as active_tokens,
@@ -282,27 +293,27 @@ SELECT
   MAX(pt.last_used) as last_token_used
 FROM public.push_tokens pt
 JOIN public.profiles p ON pt.user_id = p.id
-GROUP BY pt.user_id, p.username, p.email;
+GROUP BY pt.user_id, p.display_name, p.email;
 
 -- Create view for notification preferences summary
 CREATE OR REPLACE VIEW public.notification_preferences_summary AS
 SELECT
   np.*,
-  u.username,
+  u.display_name,
   u.email,
   CASE
     WHEN np.quiet_hours_enabled
       AND (
         (
-          (to_time(np.quiet_hours_start) <= to_time(np.quiet_hours_end)
-           AND TIME 'now' >= to_time(np.quiet_hours_start)
-           AND TIME 'now' < to_time(np.quiet_hours_end))
+          (np.quiet_hours_start <= np.quiet_hours_end
+           AND TIME 'now' >= np.quiet_hours_start
+           AND TIME 'now' < np.quiet_hours_end)
         )
         OR
         (
-          (to_time(np.quiet_hours_start) > to_time(np.quiet_hours_end)
-           AND (TIME 'now' >= to_time(np.quiet_hours_start)
-                OR TIME 'now' < to_time(np.quiet_hours_end)))
+          (np.quiet_hours_start > np.quiet_hours_end
+           AND (TIME 'now' >= np.quiet_hours_start
+                OR TIME 'now' < np.quiet_hours_end))
         )
       )
     THEN 'Muted'

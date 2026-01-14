@@ -6,77 +6,37 @@ This directory contains Supabase Edge Functions that implement various AI featur
 
 ### 1. ai-cover-art
 - **Path**: `/supabase/functions/ai-cover-art`
-- **Purpose**: Generate story cover images using DALL-E 3
+- **Purpose**: Generate story cover images using Pollinations.ai (Free/Cheap alternative)
 - **Features**:
   - Customizable prompts and styles
   - Multiple size options
   - Response caching
-  - Cost tracking
+  - Cost tracking (effectively free)
   - Content safety filtering
-
-**Request Body**:
-```typescript
-{
-  prompt: string;
-  storyTitle?: string;
-  style?: string;
-  width?: number;
-  height?: number;
-  userId?: string;
-  storyId?: string;
-}
-```
 
 ### 2. ai-story-summary
 - **Path**: `/supabase/functions/ai-story-summary`
-- **Purpose**: Generate story summaries for overviews
+- **Purpose**: Generate story summaries using Gemini 2.0 Flash
 - **Features**:
   - Multiple summary styles (short, detailed, tagline)
   - Content length control
   - Response caching
-  - Token usage tracking
-  - Content safety filtering
-
-**Request Body**:
-```typescript
-{
-  storyContent: string;
-  title?: string;
-  style?: 'short' | 'detailed' | 'tagline';
-  maxLength?: number;
-  userId?: string;
-  storyId?: string;
-}
-```
+  - Cost tracking (fraction of a cent)
+  - Content safety filtering via Gemini safety tokens
 
 ### 3. ai-character-avatar
 - **Path**: `/supabase/functions/ai-character-avatar`
-- **Purpose**: Generate character portrait images
+- **Purpose**: Generate character portrait images using Pollinations.ai
 - **Features**:
   - Multiple art styles (realistic, cartoon, anime, fantasy)
   - Character consistency tracking
   - Response caching
   - Cost tracking
-  - Content safety filtering
-
-**Request Body**:
-```typescript
-{
-  characterName: string;
-  characterDescription: string;
-  age?: string;
-  gender?: string;
-  style?: 'realistic' | 'cartoon' | 'anime' | 'fantasy';
-  width?: number;
-  height?: number;
-  userId?: string;
-  storyId?: string;
-}
-```
+  - Content safety filtering using Gemini 2.0 Flash
 
 ### 4. ai-narrative-analysis
 - **Path**: `/supabase/functions/ai-narrative-analysis`
-- **Purpose**: Analyze story arc and character development
+- **Purpose**: Analyze story arc and character development using Gemini 2.0 Flash
 - **Features**:
   - Comprehensive narrative structure analysis
   - Character development assessment
@@ -84,20 +44,9 @@ This directory contains Supabase Edge Functions that implement various AI featur
   - Theme identification
   - Detailed breakdown option
 
-**Request Body**:
-```typescript
-{
-  storyContent: string;
-  chapterId?: string;
-  userId?: string;
-  storyId?: string;
-  includeDetailedBreakdown?: boolean;
-}
-```
-
 ### 5. ai-style-transfer
 - **Path**: `/supabase/functions/ai-style-transfer`
-- **Purpose**: Transform writing style (romantic, playful, dramatic, etc.)
+- **Purpose**: Transform writing style using Gemini 2.0 Flash
 - **Features**:
   - 8 different style options
   - Meaning preservation option
@@ -105,21 +54,9 @@ This directory contains Supabase Edge Functions that implement various AI featur
   - Response caching
   - Style usage logging
 
-**Request Body**:
-```typescript
-{
-  text: string;
-  targetStyle: 'romantic' | 'playful' | 'dramatic' | 'mysterious' | 'humorous' | 'gothic' | 'modern' | 'classical';
-  preserveMeaning?: boolean;
-  userId?: string;
-  storyId?: string;
-  chapterId?: string;
-}
-```
-
 ### 6. ai-character-consistency
 - **Path**: `/supabase/functions/ai-character-consistency`
-- **Purpose**: Check and maintain character consistency
+- **Purpose**: Check and maintain character consistency (Manual/Regex logic)
 - **Features**:
   - Character trait analysis
   - Relationship tracking
@@ -127,47 +64,16 @@ This directory contains Supabase Edge Functions that implement various AI featur
   - Character arc evaluation
   - Consistency scoring
 
-**Request Body**:
-```typescript
-{
-  storyId: string;
-  chapterId?: string;
-  checkNewContent?: string;
-  userId?: string;
-  action?: 'check' | 'analyze' | 'update';
-}
-```
-
-## Database Tables
-
-### ai_cache
-Stores cached AI responses to reduce costs and improve performance.
-
-### story_characters
-Stores character information including avatars and descriptions.
-
-### story_analyses
-Stores narrative analysis results for stories and chapters.
-
-### character_consistency_analyses
-Stores character consistency analysis results.
-
-### style_usage
-Tracks style transfer usage across stories.
-
-### ai_usage
-Logs all AI function calls with costs and token usage.
-
 ## Required Environment Variables
 
 - `SUPABASE_URL`: Your Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
-- `OPENAI_API_KEY`: Your OpenAI API key for accessing GPT and DALL-E models
+- `GEMINI_API_KEY`: Your Google Gemini API key (Required for text features and safety)
 
 ## Security Notes
 
 1. All functions include CORS headers for web access
-2. Content safety filtering is implemented using OpenAI's moderation API
+2. Content safety filtering is implemented using Gemini's safety settings
 3. User authentication is required for most functions
 4. Rate limiting should be implemented at the Supabase level
 5. All responses are cached to reduce API costs
@@ -175,11 +81,12 @@ Logs all AI function calls with costs and token usage.
 ## Cost Tracking
 
 Each function includes cost tracking:
-- DALL-E 3: ~$0.04 per image
-- GPT-3.5-Turbo: ~$0.002 per 1K tokens
-- GPT-4: ~$0.03 per 1K tokens
+- Pollinations.ai: Free
+- Gemini 2.0 Flash: ~$0.0001 per 1K tokens (extremely cheap)
+- Gemini 1.5 Pro (if used): ~$0.0005 per 1K tokens
 
 Functions log usage to the `ai_usage` table for billing and analytics purposes.
+
 
 ## Mobile Components
 

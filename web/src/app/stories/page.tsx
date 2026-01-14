@@ -55,17 +55,18 @@ export default function StoriesPage() {
         .from('stories')
         .select(`
           *,
-          members (
+          story_members (
             user_id,
             role,
-            profile (
+            profile:profiles (
               id,
               display_name,
               avatar_url
             )
           )
         `)
-        .or(`created_by.eq.${profile?.id},members.user_id.eq.${profile?.id}`)
+        // RLS ensures users only see their own stories
+        // .or(`created_by.eq.${profile?.id},members.user_id.eq.${profile?.id}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -73,7 +74,7 @@ export default function StoriesPage() {
       // Transform data to match StoryWithMembers type
       const transformedStories = (data || []).map((story: any) => ({
         ...story,
-        members: story.members?.map((m: any) => ({
+        members: story.story_members?.map((m: any) => ({
           ...m,
           profile: m.profile,
         })) || [],

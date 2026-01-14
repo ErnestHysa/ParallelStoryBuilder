@@ -1,4 +1,5 @@
-project_id = "your-project-id-here"
+# A string used to distinguish different Supabase projects on the same host.
+project_id = "ParallelStoryBuilder"
 
 [api]
 enabled = true
@@ -10,13 +11,11 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
+major_version = 17
 
 [studio]
 enabled = true
 port = 54323
-
-[ingest]
-enabled = false
 
 [storage]
 enabled = true
@@ -27,6 +26,38 @@ enabled = true
 site_url = "http://localhost:8081"
 additional_redirect_urls = ["exp://127.0.0.1:8081"]
 
-[functions]
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[edge_runtime]
 enabled = true
-verify_jwt = true
+policy = "oneshot"
+
+[functions.ai-character-avatar]
+enabled = true
+
+[functions.ai-character-consistency]
+enabled = true
+
+[functions.ai-continuation]
+enabled = true
+
+[functions.ai-cover-art]
+enabled = true
+
+[functions.ai-enhance]
+enabled = true
+
+[functions.ai-narrative-analysis]
+enabled = true
+
+[functions.ai-story-summary]
+enabled = true
+
+[functions.ai-style-transfer]
+enabled = true
+
+[functions.ai-twist]
+enabled = true

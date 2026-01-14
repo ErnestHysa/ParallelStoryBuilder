@@ -94,9 +94,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a scheduled job for cleanup (PostgreSQL 14+)
--- This creates a event that runs every hour
-SELECT cron.schedule('0 * * * *', $$SELECT public.cleanup_stale_presence(24)$$);
+-- Create a scheduled job for cleanup (requires pg_cron extension)
+-- This creates an event that runs every hour (only if cron extension is available)
+DO $$
+BEGIN
+  -- Check if cron extension exists before scheduling
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule('cleanup_stale_presence', '0 * * * *', 'SELECT public.cleanup_stale_presence(24)');
+  ELSE
+    RAISE NOTICE 'pg_cron extension not available, skipping scheduled job creation';
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Could not schedule cron job: %', SQLERRM;
+END;
+$$;
 
 -- Add constraint to ensure only one active presence per user per story
 CREATE UNIQUE INDEX IF NOT EXISTS idx_presence_user_story_unique
@@ -106,10 +118,10 @@ WHERE status = 'active';
 -- Create a view for active presences
 CREATE OR REPLACE VIEW public.active_presences AS
 SELECT p.*,
-       u.username,
+       u.display_name,
        u.avatar_url,
-       s.title as story_title,
-       c.title as chapter_title
+       s.theme as story_theme,
+       c.chapter_number as chapter_number
 FROM public.presence p
 JOIN public.profiles u ON p.user_id = u.id
 JOIN public.stories s ON p.story_id = s.id

@@ -10,6 +10,7 @@ CREATE TABLE profiles (
 -- Create stories table
 CREATE TABLE stories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
   theme TEXT NOT NULL CHECK (theme IN ('romance', 'fantasy', 'our_future')),
   created_by UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   pairing_code TEXT UNIQUE NOT NULL,

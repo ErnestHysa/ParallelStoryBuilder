@@ -98,31 +98,20 @@ DECLARE
 BEGIN
   -- Count shared stories
   SELECT COUNT(*) INTO v_story_count
-  FROM public.story_participants sp1
-  JOIN public.story_participants sp2 ON sp1.story_id = sp2.story_id
+  FROM public.story_members sp1
+  JOIN public.story_members sp2 ON sp1.story_id = sp2.story_id
   WHERE sp1.user_id = p_user_1_id AND sp2.user_id = p_user_2_id;
 
-  -- Count shared chapters
+  -- Alternative for chapter contributions (using author_id from chapters)
   SELECT COUNT(*) INTO v_chapter_count
-  FROM public.chapter_contributions cc1
-  JOIN public.chapter_contributions cc2 ON cc1.chapter_id = cc2.chapter_id
-  WHERE cc1.user_id = p_user_1_id AND cc2.user_id = p_user_2_id;
-
-  -- Find common tags (preferences)
-  SELECT array_agg(DISTINCT tag_id) INTO v_common_tags
-  FROM public.profile_tags pt1
-  JOIN public.profile_tags pt2 ON pt1.tag_id = pt2.tag_id
-  WHERE pt1.user_id = p_user_1_id AND pt2.user_id = p_user_2_id
-    AND pt1.tag_id IS NOT NULL AND pt2.tag_id IS NOT NULL;
-
-  -- Calculate similarity score
-  v_similarity_score := COALESCE(CARDINALITY(v_common_tags), 0) * 10;
+  FROM public.chapters c
+  WHERE c.author_id = p_user_1_id 
+    AND c.story_id IN (SELECT story_id FROM public.story_members WHERE user_id = p_user_2_id);
 
   -- Base score calculation
-  v_score := v_story_count * 5 +
-             v_chapter_count * 3 +
-             v_similarity_score +
-             LEAST(v_story_count + v_chapter_count, 20);  -- Bonus for frequent collaboration
+  v_score := v_story_count * 10 +
+             v_chapter_count * 5 +
+             LEAST(v_story_count + v_chapter_count, 30); -- Bonus for frequent collaboration
 
   -- Cap at 100
   RETURN LEAST(v_score, 100);
@@ -138,12 +127,12 @@ DECLARE
 BEGIN
   -- Get the two users who joined the story
   SELECT
-    CASE WHEN sp.user_id = NEW.user_id THEN ss.creator_id ELSE NEW.user_id END,
-    CASE WHEN sp.user_id = NEW.user_id THEN NEW.user_id ELSE ss.creator_id END
+    CASE WHEN sp.user_id = NEW.user_id THEN ss.created_by ELSE NEW.user_id END,
+    CASE WHEN sp.user_id = NEW.user_id THEN NEW.user_id ELSE ss.created_by END
   INTO v_user_1, v_user_2
-  FROM public.story_participants sp
+  FROM public.story_members sp
   JOIN public.stories ss ON sp.story_id = ss.id
-  WHERE sp.id = NEW.id;
+  WHERE sp.story_id = NEW.story_id AND sp.user_id = NEW.user_id;
 
   -- Check if relationship already exists
   IF NOT EXISTS (
@@ -208,22 +197,21 @@ $$ LANGUAGE plpgsql;
 
 -- Apply triggers to relevant tables
 CREATE TRIGGER trg_create_relationship_on_story_join
-AFTER INSERT ON public.story_participants
+AFTER INSERT ON public.story_members
 FOR EACH ROW
 EXECUTE FUNCTION public.create_relationship_on_story_join();
 
 CREATE TRIGGER trg_update_relationship_on_collaboration
-AFTER INSERT OR UPDATE ON public.chapter_contributions
+AFTER INSERT OR UPDATE ON public.chapters
 FOR EACH ROW
-WHEN OLD.user_id IS DISTINCT FROM NEW.user_id
 EXECUTE FUNCTION public.update_relationship_on_collaboration();
 
 -- Create view for active relationships
 CREATE OR REPLACE VIEW public.active_relationships AS
 SELECT r.*,
-       p1.username as user_1_name,
+       p1.display_name as user_1_name,
        p1.avatar_url as user_1_avatar,
-       p2.username as user_2_name,
+       p2.display_name as user_2_name,
        p2.avatar_url as user_2_avatar
 FROM public.relationships r
 JOIN public.profiles p1 ON r.user_1 = p1.id
@@ -235,7 +223,7 @@ ORDER BY r.connection_score DESC;
 -- Create view for daily intentions dashboard
 CREATE OR REPLACE VIEW public.daily_intentions_dashboard AS
 SELECT di.*,
-       p.username,
+       p.display_name,
        p.avatar_url,
        CASE
          WHEN di.is_completed THEN 'completed'

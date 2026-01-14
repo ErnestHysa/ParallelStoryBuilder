@@ -100,9 +100,9 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION public.update_chapter_content(
   p_chapter_id UUID,
   p_content TEXT,
+  p_user_id UUID,
   p_format TEXT DEFAULT 'html',
-  p_language TEXT DEFAULT 'en',
-  p_user_id UUID
+  p_language TEXT DEFAULT 'en'
 )
 RETURNS VOID AS $$
 BEGIN
@@ -113,8 +113,7 @@ BEGIN
     content_format = p_format,
     language = p_language,
     updated_at = NOW(),
-    content_updated_at = NOW(),
-    updated_by = p_user_id
+    content_updated_at = NOW()
   WHERE id = p_chapter_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -166,7 +165,7 @@ CREATE OR REPLACE FUNCTION public.search_rich_content(
 )
 RETURNS TABLE(
   id UUID,
-  title TEXT,
+  chapter_number INTEGER,
   content_preview TEXT,
   format TEXT,
   language TEXT,
@@ -176,7 +175,7 @@ BEGIN
   RETURN QUERY
   SELECT
     c.id,
-    c.title,
+    c.chapter_number,
     LEFT(
       CASE
         WHEN c.content_rich ? 'content' THEN c.content_rich->>'content'
@@ -190,13 +189,11 @@ BEGIN
     CASE
       WHEN c.content ILIKE '%' || p_search_text || '%' THEN 100
       WHEN c.content_rich ? 'content' AND c.content_rich->>'content' ILIKE '%' || p_search_text || '%' THEN 80
-      WHEN c.title ILIKE '%' || p_search_text || '%' THEN 90
       ELSE 50
     END as score
   FROM public.chapters c
   WHERE (c.content ILIKE '%' || p_search_text || '%'
-    OR (c.content_rich ? 'content' AND c.content_rich->>'content' ILIKE '%' || p_search_text || '%')
-    OR c.title ILIKE '%' || p_search_text || '%')
+    OR (c.content_rich ? 'content' AND c.content_rich->>'content' ILIKE '%' || p_search_text || '%'))
     AND (p_language IS NULL OR c.language = p_language)
     ORDER BY score DESC, c.updated_at DESC
     LIMIT 50;
@@ -268,8 +265,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a scheduled job for cleanup (runs daily at 4 AM)
-SELECT cron.schedule('0 4 * * *', $$SELECT public.cleanup_old_rich_content()$$);
+-- Create a scheduled job for cleanup (requires pg_cron extension)
+-- This runs daily at 4 AM (only if cron extension is available)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule('cleanup_old_rich_content', '0 4 * * *', 'SELECT public.cleanup_old_rich_content()');
+  ELSE
+    RAISE NOTICE 'pg_cron extension not available, skipping scheduled job creation';
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Could not schedule cron job: %', SQLERRM;
+END;
+$$;
 
 -- Create view for chapters with rich content details
 CREATE OR REPLACE VIEW public.chapters_with_rich_content AS
@@ -287,20 +296,17 @@ SELECT
     ELSE 0
   END as block_count,
   public.get_content_stats(c.id) as content_stats,
-  u.username as last_updated_by
+  u.display_name as author_display_name
 FROM public.chapters c
 JOIN public.stories s ON c.story_id = s.id
-LEFT JOIN public.profiles u ON c.updated_by = u.id;
+LEFT JOIN public.profiles u ON c.author_id = u.id;
 
 -- Create view for content by language
 CREATE OR REPLACE VIEW public.content_by_language AS
 SELECT
   c.language,
   COUNT(*) as chapter_count,
-  COUNT(DISTINCT c.story_id) as story_count,
-  COUNT(CASE WHEN c.is_published THEN 1 END) as published_chapters,
-  COUNT(CASE WHEN c.is_draft THEN 1 END) as draft_chapters,
-  AVG(public.get_content_stats(c.id)->>'word_count'::integer) as avg_words_per_chapter
+  COUNT(DISTINCT c.story_id) as story_count
 FROM public.chapters c
 GROUP BY c.language
 ORDER BY chapter_count DESC;

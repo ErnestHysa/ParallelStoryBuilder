@@ -394,27 +394,26 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE VIEW public.characters_summary AS
 SELECT
   sc.*,
-  s.title as story_title,
-  s.slug as story_slug,
-  u.username as created_by_username,
+  s.theme as story_theme,
+  u.display_name as created_by_display_name,
   ca.reference as primary_appearance,
   COUNT(cr.id) as relationship_count,
-  COUNT(DISTINCT CASE WHEN sc.role = 'main' THEN 1 END) OVER (PARTITION BY sc.story_id) as main_characters_count
+  COUNT(CASE WHEN sc.role = 'main' THEN 1 END) OVER (PARTITION BY sc.story_id) as main_characters_count
 FROM public.story_characters sc
 JOIN public.stories s ON sc.story_id = s.id
 LEFT JOIN public.profiles u ON sc.created_by = u.id
 LEFT JOIN public.character_appearance ca
   ON sc.id = ca.character_id AND ca.is_primary = TRUE
 LEFT JOIN public.character_relationships cr ON sc.id = cr.character_id
-GROUP BY sc.id, s.title, s.slug, u.username, ca.reference;
+GROUP BY sc.id, s.theme, u.display_name, ca.reference;
 
 -- Create view for characters by story
 CREATE OR REPLACE VIEW public.story_characters_expanded AS
 SELECT
   sc.*,
-  s.title as story_title,
-  s.visibility as story_visibility,
-  u.username as created_by_username,
+  s.theme as story_theme,
+  s.status as story_status,
+  u.display_name as created_by_display_name,
   (SELECT COUNT(*) FROM public.character_relationships WHERE character_id = sc.id) as relationship_count,
   (SELECT array_agg(cr.relationship_type)
    FROM public.character_relationships cr
