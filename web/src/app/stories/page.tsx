@@ -22,6 +22,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import type { StoryWithMembers, StoryMember, Profile } from '@/types';
 import { formatDate, cn } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
+import DailyIntentionCard from '@/components/DailyIntentionCard';
 
 const themeColors: Record<string, string> = {
   romance: 'from-rose-400 to-rose-600',
@@ -43,9 +44,105 @@ export default function StoriesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'completed'>('all');
 
+  // Daily intention state
+  const [dailyIntention, setDailyIntention] = useState<any>(null);
+  const [isLoadingIntention, setIsLoadingIntention] = useState(false);
+
   useEffect(() => {
     loadStories();
+    loadDailyIntention();
   }, []);
+
+  const loadDailyIntention = async () => {
+    if (!profile) return;
+
+    try {
+      const supabase = getSupabaseClient();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('daily_intentions')
+        .select('*')
+        .eq('user_id', profile.id)
+        .gte('created_at', today.toISOString())
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading daily intention:', error);
+      }
+
+      setDailyIntention(data);
+    } catch (error) {
+      console.error('Error loading daily intention:', error);
+    }
+  };
+
+  const handleSetIntention = async (intentionText: string) => {
+    if (!profile) {
+      toast.error('Please sign in to set your intention');
+      return;
+    }
+
+    setIsLoadingIntention(true);
+    try {
+      const supabase = getSupabaseClient();
+
+      // First, try to get or create a relationship
+      const { data: relationships } = await supabase
+        .from('relationships')
+        .select('id')
+        .or(`user1_id.eq.${profile.id},user2_id.eq.${profile.id}`)
+        .limit(1);
+
+      const relationshipId = (relationships as any)?.[0]?.id;
+
+      const { data, error } = await supabase
+        .from('daily_intentions')
+        .insert({
+          relationship_id: relationshipId || null,
+          user_id: profile.id,
+          intention: intentionText,
+          completed: false,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setDailyIntention(data);
+      toast.success('Daily intention set!');
+    } catch (error: any) {
+      console.error('Error setting intention:', error);
+      toast.error(error.message || 'Failed to set intention');
+    } finally {
+      setIsLoadingIntention(false);
+    }
+  };
+
+  const handleCompleteIntention = async () => {
+    if (!dailyIntention) return;
+
+    setIsLoadingIntention(true);
+    try {
+      const supabase = getSupabaseClient();
+
+      const { error } = await supabase
+        .from('daily_intentions')
+        .update({ completed: true, completed_at: new Date().toISOString() })
+        .eq('id', dailyIntention.id);
+
+      if (error) throw error;
+
+      setDailyIntention({ ...dailyIntention, completed: true });
+      toast.success('Intention completed! 🎉');
+    } catch (error: any) {
+      console.error('Error completing intention:', error);
+      toast.error(error.message || 'Failed to complete intention');
+    } finally {
+      setIsLoadingIntention(false);
+    }
+  };
 
   const loadStories = async () => {
     try {
@@ -144,6 +241,21 @@ export default function StoriesPage() {
             <Plus className="w-5 h-5" />
             New Story
           </Link>
+        </motion.div>
+
+        {/* Daily Intention Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="max-w-lg mx-auto"
+        >
+          <DailyIntentionCard
+            intention={dailyIntention}
+            onSetIntention={handleSetIntention}
+            onCompleteIntention={handleCompleteIntention}
+            isLoading={isLoadingIntention}
+          />
         </motion.div>
 
         {/* Search and Filter */}

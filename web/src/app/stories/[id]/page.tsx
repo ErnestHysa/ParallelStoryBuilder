@@ -307,7 +307,7 @@ export default function StoryDetailPage() {
                             Chapter {chapter.chapter_number}
                           </h3>
                           <p className="font-body text-ink-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
-                            {chapter.content}
+                            {chapter.content.replace(/<[^>]*>/g, '').substring(0, 200)}
                           </p>
                           <div className="flex items-center gap-3 text-sm text-ink-500 dark:text-dark-textMuted">
                             <span>{formatDate(chapter.created_at)}</span>

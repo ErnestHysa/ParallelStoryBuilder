@@ -58,7 +58,7 @@ export default function ChapterViewPage() {
         .single();
 
       if (storyError) throw storyError;
-      setStory(storyData as Story);
+      setStory(storyData as unknown as Story);
 
       // Load chapter
       const { data: chapterData, error: chapterError } = await supabase
@@ -69,7 +69,7 @@ export default function ChapterViewPage() {
         .single();
 
       if (chapterError) throw chapterError;
-      setChapter(chapterData as Chapter);
+      setChapter(chapterData as unknown as Chapter);
 
       // Load author info
       if (chapterData) {
@@ -79,7 +79,7 @@ export default function ChapterViewPage() {
           .eq('id', (chapterData as any).author_id)
           .single();
 
-        setAuthorName(authorData?.display_name || 'Unknown Author');
+        setAuthorName((authorData as any)?.display_name || 'Unknown Author');
       }
     } catch (error) {
       console.error('Error loading chapter:', error);
@@ -215,9 +215,10 @@ export default function ChapterViewPage() {
           {/* Content */}
           <div className="bg-white dark:bg-dark-bgSecondary rounded-b-3xl shadow-soft p-8 md:p-12">
             <div className="prose prose-lg max-w-none">
-              <div className="font-body text-ink-800 dark:text-dark-textSecondary leading-loose whitespace-pre-wrap text-lg">
-                {chapter.content}
-              </div>
+              <div
+                className="font-body text-ink-800 dark:text-dark-textSecondary leading-loose text-lg"
+                dangerouslySetInnerHTML={{ __html: chapter.content }}
+              />
             </div>
           </div>
 

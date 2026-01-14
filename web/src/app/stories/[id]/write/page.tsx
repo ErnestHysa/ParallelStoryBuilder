@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/authStore';
 import type { Story, Chapter } from '@/types';
 import { cn } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
+import RichTextEditor from '@/components/RichTextEditor';
 
 const DRAFT_STORAGE_KEY = (storyId: string) => `parallel-draft-${storyId}`;
 const MIN_CONTENT_LENGTH = 50;
@@ -553,9 +554,10 @@ export default function WriteChapterPage() {
                   <h2 className="font-display text-3xl text-ink-950 dark:text-dark-text mb-6">
                     Chapter {chapterNumber}
                   </h2>
-                  <div className="font-body text-ink-800 dark:text-dark-textSecondary leading-relaxed whitespace-pre-wrap">
-                    {content || 'Your story will appear here...'}
-                  </div>
+                  <div
+                    className="font-body text-ink-800 dark:text-dark-textSecondary leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: content || 'Your story will appear here...' }}
+                  />
                 </div>
               </div>
             ) : (
@@ -575,15 +577,12 @@ export default function WriteChapterPage() {
                   />
                 </div>
 
-                {/* Editor */}
-                <div className="bg-white dark:bg-dark-bgSecondary rounded-2xl shadow-soft overflow-hidden">
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Begin writing your chapter here... Let your imagination flow freely."
-                    className="w-full h-[50vh] p-8 text-lg font-body text-ink-950 dark:text-dark-text placeholder:text-ink-400 dark:placeholder:text-dark-textMuted focus:outline-none resize-none leading-relaxed bg-white dark:bg-dark-bgSecondary"
-                  />
-                </div>
+                {/* Rich Text Editor */}
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Begin writing your chapter here... Let your imagination flow freely."
+                />
 
                 {/* Writing prompt */}
                 <button
