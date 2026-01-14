@@ -1,0 +1,277 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import distinctive fonts */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Source+Serif+Pro:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --font-display: 'Cormorant Garamond', serif;
+  --font-body: 'Source Serif Pro', serif;
+  --font-accent: 'Crimson Pro', serif;
+
+  --color-rose-500: #D4567C;
+  --color-cream-500: #F0E8DF;
+  --color-amethyst-600: #7B3F8E;
+  --color-gold-500: #D4A574;
+  --color-ink-950: #1A1A1E;
+  --color-ink-900: #2D2A2E;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: #FAF7F5;
+  color: var(--color-ink-950);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selection styling */
+::selection {
+  background-color: var(--color-rose-500);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: var(--color-rose-500);
+  color: white;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-cream-200);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-rose-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-rose-400);
+}
+
+/* Typography enhancements */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-weight: 400;
+}
+
+/* Link styling */
+a {
+  color: var(--color-rose-500);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-rose-600);
+}
+
+/* Button base styles */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3
+           bg-rose-500 text-white font-medium
+           rounded-lg
+           hover:bg-rose-600
+           active:scale-[0.97]
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    font-family: var(--font-accent);
+    letter-spacing: 0.02em;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3
+           bg-transparent border-2 border-rose-500 text-rose-500 font-medium
+           rounded-lg
+           hover:bg-rose-500 hover:text-white
+           active:scale-[0.97]
+           transition-all duration-200;
+    font-family: var(--font-accent);
+    letter-spacing: 0.02em;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-6 py-3
+           bg-transparent text-rose-500 font-medium
+           rounded-lg
+           hover:bg-rose-50
+           active:scale-[0.97]
+           transition-all duration-200;
+    font-family: var(--font-accent);
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3
+           bg-cream-100 border border-cream-400
+           rounded-lg
+           text-ink-950 placeholder:text-ink-700
+           focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-500
+           transition-all duration-200;
+    font-family: var(--font-body);
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-soft;
+    box-shadow: 0 2px 16px rgba(42, 42, 46, 0.06);
+  }
+
+  .card-interactive {
+    @apply card cursor-pointer
+           hover:shadow-medium
+           active:scale-[0.99]
+           transition-all duration-200;
+  }
+
+  .shadow-soft {
+    box-shadow: 0 2px 16px rgba(42, 42, 46, 0.06);
+  }
+
+  .shadow-medium {
+    box-shadow: 0 8px 32px rgba(42, 42, 46, 0.1);
+  }
+
+  .shadow-elegant {
+    box-shadow: 0 16px 64px rgba(42, 42, 46, 0.12);
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+/* Staggered animations */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-rose-500) 0%, var(--color-amethyst-600) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Ornate border decoration */
+.ornate-border {
+  position: relative;
+  border: 1px solid var(--color-cream-300);
+}
+
+.ornate-border::before,
+.ornate-border::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-gold-500);
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.ornate-border:hover::before,
+.ornate-border:hover::after {
+  opacity: 1;
+}
+
+.ornate-border::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 8px 0 0 0;
+}
+
+.ornate-border::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 8px 0;
+}
+
+/* Focus styles for accessibility */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-rose-500);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+  }
+
+  body::before {
+    display: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

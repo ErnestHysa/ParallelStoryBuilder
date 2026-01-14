@@ -7,11 +7,34 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.parallelstorybuilder.app"
+      "bundleIdentifier": "com.parallelstorybuilder.app",
+      "notification": {
+        "icon": "./assets/notification-icon.png",
+        "color": "#4299E1",
+        "iosDisplayInForeground": true
+      }
     },
     "android": {
-      "package": "com.parallelstorybuilder.app"
+      "package": "com.parallelstorybuilder.app",
+      "notification": {
+        "icon": "@mipmap/ic_launcher",
+        "color": "#4299E1",
+        "mode": "default"
+      }
     },
+    "permissions": [
+      "ios.permission.NOTIFICATIONS"
+    ],
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#4299E1",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
     "scheme": "psb",
     "experiments": {
       "typedRoutes": true

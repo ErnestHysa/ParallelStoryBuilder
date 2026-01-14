@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, KeyboardAvoidingView, Platform, StyleSheet, ScrollView, Text } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, StyleSheet, ScrollView, Text, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useStoriesStore } from '@/stores/storiesStore';
+import { useDemoStore } from '@/stores/demoStore';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Card } from '@/components/Card';
@@ -17,7 +19,9 @@ export default function JoinStoryScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const joinStory = useStoriesStore((state) => state.joinStory);
+  const joinStorySupabase = useStoriesStore((state) => state.joinStory);
+  const getStory = useDemoStore((state) => state.getStory);
+  const isConfigured = useAuthStore((state) => state.isConfigured);
 
   const validate = () => {
     if (!pairingCode.trim()) {
@@ -40,8 +44,26 @@ export default function JoinStoryScreen() {
     setError('');
 
     try {
-      await joinStory(pairingCode.trim());
-      router.back();
+      if (isConfigured) {
+        await joinStorySupabase(pairingCode.trim());
+        router.back();
+      } else {
+        // Demo mode: find the story with the matching code
+        const story = getStory(`demo-story-1`);
+        if (story && story.pairing_code === pairingCode.trim().toUpperCase()) {
+          Alert.alert('Demo Mode', `Joined "${story.title}" in demo mode!`);
+          router.back();
+        } else if (story) {
+          // For demo purposes, accept any code and show the first story
+          Alert.alert(
+            'Demo Mode',
+            'In demo mode, you can view the sample stories. Use code LOVE123 or DRAGON456 to see the demo stories.',
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+        } else {
+          setError('No story found with that code. Try LOVE123 or DRAGON456 in demo mode.');
+        }
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to join story';
       setError(message);

@@ -16,9 +16,24 @@ export interface ButtonProps {
   accessibilityLabel?: string
   accessibilityHint?: string
   accessibilityRole?: 'button' | 'text' | 'link'
+  accessibilityState?: {
+    disabled?: boolean
+    selected?: boolean
+    checked?: boolean | 'mixed'
+    busy?: boolean
+    expanded?: boolean
+  }
   disabled?: boolean
   style?: ViewStyle
   onPress?: () => void
+  testID?: string
+  importantForAccessibility?: 'auto' | 'yes' | 'no' | 'no-hide-descendants'
+  accessibilityViewIsModal?: boolean
+  liveRegion?: 'polite' | 'assertive' | 'none'
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
+  size?: 'sm' | 'md' | 'lg'
+  width?: 'auto' | 'full'
 }
 
 const COLORS = {
@@ -40,68 +55,173 @@ export function Button({
   accessibilityLabel,
   accessibilityHint,
   accessibilityRole = 'button',
+  accessibilityState,
   style,
   onPress,
+  testID,
+  importantForAccessibility = 'yes',
+  accessibilityViewIsModal = false,
+  liveRegion = 'none',
+  leftIcon,
+  rightIcon,
+  size = 'md',
+  width = 'auto',
 }: ButtonProps) {
   const getButtonStyle = (): ViewStyle => {
     const base: ViewStyle = {
-      minHeight: 44,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'row',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderStyle: 'solid',
+      gap: 8,
     };
 
-    switch (variant) {
-      case 'primary':
-        return { ...base, backgroundColor: COLORS.primary };
-      case 'secondary':
-        return { ...base, backgroundColor: COLORS.secondary };
-      case 'ghost':
+    switch (size) {
+      case 'sm':
         return {
           ...base,
-          backgroundColor: 'transparent',
-          borderWidth: 1,
-          borderColor: COLORS.primary,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          minHeight: 36,
+          minWidth: 36,
+          borderRadius: 6,
         };
-      case 'danger':
-        return { ...base, backgroundColor: COLORS.error };
+      case 'md':
+        return {
+          ...base,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          minHeight: 44,
+          minWidth: 44,
+          borderRadius: 8,
+        };
+      case 'lg':
+        return {
+          ...base,
+          paddingHorizontal: 24,
+          paddingVertical: 16,
+          minHeight: 52,
+          minWidth: 52,
+          borderRadius: 10,
+        };
       default:
         return base;
     }
   };
 
   const getTextStyle = (): TextStyle => {
-    return {
-      color: variant === 'ghost' ? COLORS.primary : COLORS.surface,
+    let baseStyle: TextStyle = {
       fontSize: 16,
       fontWeight: '600',
+      textAlign: 'center',
     };
+
+    switch (size) {
+      case 'sm':
+        baseStyle = { ...baseStyle, fontSize: 14, fontWeight: '500' };
+        break;
+      case 'md':
+        baseStyle = { ...baseStyle, fontSize: 16, fontWeight: '600' };
+        break;
+      case 'lg':
+        baseStyle = { ...baseStyle, fontSize: 18, fontWeight: '700' };
+        break;
+    }
+
+    switch (variant) {
+      case 'primary':
+        baseStyle.color = COLORS.surface;
+        break;
+      case 'secondary':
+        baseStyle.color = COLORS.surface;
+        break;
+      case 'ghost':
+        baseStyle.color = COLORS.primary;
+        break;
+      case 'danger':
+        baseStyle.color = COLORS.surface;
+        break;
+    }
+
+    return baseStyle;
+  };
+
+  const getContainerStyle = (): ViewStyle => {
+    const containerStyle: ViewStyle = { ...getButtonStyle() };
+
+    switch (variant) {
+      case 'primary':
+        containerStyle.backgroundColor = COLORS.primary;
+        containerStyle.borderColor = COLORS.primary;
+        break;
+      case 'secondary':
+        containerStyle.backgroundColor = COLORS.secondary;
+        containerStyle.borderColor = COLORS.secondary;
+        break;
+      case 'ghost':
+        containerStyle.backgroundColor = 'transparent';
+        containerStyle.borderColor = COLORS.primary;
+        break;
+      case 'danger':
+        containerStyle.backgroundColor = COLORS.error;
+        containerStyle.borderColor = COLORS.error;
+        break;
+    }
+
+    if (disabled || isLoading) {
+      containerStyle.opacity = 0.5;
+    }
+
+    if (width === 'full') {
+      containerStyle.width = '100%';
+    }
+
+    return containerStyle;
   };
 
   const isDisabled = disabled || isLoading;
+  const finalAccessibilityLabel = accessibilityLabel ||
+    (typeof children === 'string' ? children : 'Button');
 
   return (
     <TouchableOpacity
-      style={[getButtonStyle(), isDisabled && styles.disabled, style]}
+      style={[getContainerStyle(), style]}
       onPress={onPress}
       disabled={isDisabled}
-      accessibilityLabel={accessibilityLabel || (typeof children === 'string' ? children : undefined)}
-      accessibilityHint={accessibilityHint}
+      accessibilityLabel={finalAccessibilityLabel}
+      accessibilityHint={accessibilityHint || 'Press to activate'}
       accessibilityRole={accessibilityRole}
-      accessibilityState={{ disabled: isDisabled }}
+      accessibilityState={{
+        disabled: isDisabled,
+        busy: isLoading,
+        ...accessibilityState,
+      }}
+      testID={testID}
+      importantForAccessibility={importantForAccessibility}
+      accessibilityViewIsModal={accessibilityViewIsModal}
+      accessibilityLiveRegion={liveRegion}
     >
-      {isLoading ? (
-        <>
-          <ActivityIndicator size="small" color={getTextStyle().color} />
-          <View style={{ width: 8 }} />
-          <Text style={getTextStyle()}>{children}</Text>
-        </>
-      ) : (
-        <Text style={getTextStyle()}>{children}</Text>
+      {isLoading && (
+        <ActivityIndicator
+          size="small"
+          color={variant === 'primary' || variant === 'danger' ? COLORS.surface : COLORS.primary}
+          style={{ position: 'absolute' }}
+        />
       )}
+
+      {leftIcon && <View style={{ opacity: isLoading ? 0 : 1 }}>{leftIcon}</View>}
+
+      {typeof children === 'string' ? (
+        <Text style={[getTextStyle(), { opacity: isLoading ? 0 : 1 }]}>
+          {children}
+        </Text>
+      ) : (
+        <View style={{ opacity: isLoading ? 0 : 1 }}>{children}</View>
+      )}
+
+      {rightIcon && <View style={{ opacity: isLoading ? 0 : 1 }}>{rightIcon}</View>}
     </TouchableOpacity>
   );
 }
