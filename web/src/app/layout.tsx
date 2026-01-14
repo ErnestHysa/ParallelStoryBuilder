@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Cormorant_Garamond, Source_Serif_4, Crimson_Pro } from 'next/font/google';
 import '@/styles/globals.css';
+import { ThemeProvider } from '@/components/ThemeProvider';
 
 // Distinctive, elegant fonts
 const cormorant = Cormorant_Garamond({
@@ -63,13 +64,38 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${sourceSerif.variable} ${crimson.variable}`}>
+    <html lang="en" className={`${cormorant.variable} ${sourceSerif.variable} ${crimson.variable}`} suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('parallel-theme');
+                  var theme = stored || 'system';
+                  var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  if (isDark) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {
+                  console.error('Failed to apply theme:', e);
+                }
+              })();
+            `,
+          }}
+        />
       </head>
-      <body className="min-h-screen bg-cream-100 text-ink-950 antialiased">
-        {children}
+      <body className="min-h-screen bg-cream-100 dark:bg-dark-bg text-ink-950 dark:text-dark-text antialiased transition-colors duration-300">
+        <ThemeProvider
+          defaultTheme="system"
+          storageKey="parallel-theme"
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

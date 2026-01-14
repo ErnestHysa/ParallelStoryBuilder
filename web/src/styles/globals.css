@@ -10,12 +10,22 @@
   --font-body: 'Source Serif Pro', serif;
   --font-accent: 'Crimson Pro', serif;
 
+  /* Light mode colors */
   --color-rose-500: #D4567C;
   --color-cream-500: #F0E8DF;
   --color-amethyst-600: #7B3F8E;
   --color-gold-500: #D4A574;
   --color-ink-950: #1A1A1E;
   --color-ink-900: #2D2A2E;
+}
+
+/* Dark mode colors */
+.dark {
+  --color-rose-500: #E87A9E;
+  --color-amethyst-600: #9B76C9;
+  --color-gold-500: #E0B88C;
+  --color-ink-950: #F5F5F5;
+  --color-ink-900: #A0A0A8;
 }
 
 * {
@@ -36,6 +46,13 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode body styles */
+.dark body {
+  background-color: #0F0F11;
+  color: #F5F5F5;
 }
 
 /* Selection styling */
@@ -56,16 +73,28 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-cream-200);
+  background: #F8F3F0;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1A1A1E;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-rose-300);
+  background: #F3ADB8;
   border-radius: 4px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #4A3A50;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-rose-400);
+  background: #EE8A9E;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #5A4A60;
 }
 
 /* Typography enhancements */

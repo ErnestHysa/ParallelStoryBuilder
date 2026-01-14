@@ -22,42 +22,42 @@ export default function LandingPage() {
         <motion.div
           animate={{ y: [0, -30, 0], rotate: [0, 10, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-20 left-[10%] w-3 h-3 bg-rose-300 rounded-full opacity-60 blur-sm"
+          className="absolute top-20 left-[10%] w-3 h-3 bg-rose-300 dark:bg-rose-700 rounded-full opacity-60 dark:opacity-40 blur-sm"
         />
         <motion.div
           animate={{ y: [0, 40, 0], rotate: [0, -15, 0] }}
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-40 right-[15%] w-2 h-2 bg-gold-400 rounded-full opacity-50 blur-sm"
+          className="absolute top-40 right-[15%] w-2 h-2 bg-gold-400 dark:bg-gold-600 rounded-full opacity-50 dark:opacity-30 blur-sm"
         />
         <motion.div
           animate={{ y: [0, -25, 0], rotate: [0, 20, 0] }}
           transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute bottom-40 left-[20%] w-4 h-4 bg-amethyst-400 rounded-full opacity-40 blur-sm"
+          className="absolute bottom-40 left-[20%] w-4 h-4 bg-amethyst-400 dark:bg-amethyst-600 rounded-full opacity-40 dark:opacity-25 blur-sm"
         />
         <motion.div
           animate={{ y: [0, 35, 0], rotate: [0, -10, 0] }}
           transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute bottom-20 right-[25%] w-3 h-3 bg-rose-200 rounded-full opacity-50 blur-sm"
+          className="absolute bottom-20 right-[25%] w-3 h-3 bg-rose-200 dark:bg-rose-800 rounded-full opacity-50 dark:opacity-30 blur-sm"
         />
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-cream-100/80 backdrop-blur-md border-b border-cream-300">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-cream-100/80 dark:bg-dark-bg/80 backdrop-blur-md border-b border-cream-300 dark:border-dark-border">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-rose-500 to-amethyst-600 rounded-lg flex items-center justify-center">
               <Feather className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
-            <span className="font-display text-xl text-ink-950">Parallel</span>
+            <span className="font-display text-xl text-ink-950 dark:text-dark-text">Parallel</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-ink-800 hover:text-rose-500 transition-colors font-body text-sm">
+            <a href="#features" className="text-ink-800 dark:text-dark-textSecondary hover:text-rose-500 dark:hover:text-dark-rose transition-colors font-body text-sm">
               Features
             </a>
-            <a href="#how-it-works" className="text-ink-800 hover:text-rose-500 transition-colors font-body text-sm">
+            <a href="#how-it-works" className="text-ink-800 dark:text-dark-textSecondary hover:text-rose-500 dark:hover:text-dark-rose transition-colors font-body text-sm">
               How it Works
             </a>
-            <a href="#stories" className="text-ink-800 hover:text-rose-500 transition-colors font-body text-sm">
+            <a href="#stories" className="text-ink-800 dark:text-dark-textSecondary hover:text-rose-500 dark:hover:text-dark-rose transition-colors font-body text-sm">
               Stories
             </a>
           </div>
@@ -75,7 +75,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-rose-50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-rose-50 dark:from-rose-950/20 via-transparent to-transparent" />
 
         <div className="max-w-6xl mx-auto relative">
           <motion.div
@@ -89,10 +89,10 @@ export default function LandingPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2, duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-rose-200 mb-8"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-dark-bgSecondary border border-rose-200 dark:border-dark-border mb-8"
             >
-              <Sparkles className="w-4 h-4 text-rose-500" />
-              <span className="text-sm font-accent text-ink-800">For long-distance couples who write</span>
+              <Sparkles className="w-4 h-4 text-rose-500 dark:text-dark-rose" />
+              <span className="text-sm font-accent text-ink-800 dark:text-dark-text">For long-distance couples who write</span>
             </motion.div>
 
             {/* Main headline */}
@@ -100,7 +100,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
-              className="font-display text-display-lg md:text-display-xl text-ink-950 mb-6"
+              className="font-display text-display-lg md:text-display-xl text-ink-950 dark:text-dark-text mb-6"
             >
               Turn your distance into{' '}
               <span className="gradient-text italic">beautiful stories</span>
@@ -110,7 +110,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.8 }}
-              className="font-body text-xl md:text-2xl text-ink-700 max-w-2xl mx-auto mb-10 leading-relaxed"
+              className="font-body text-xl md:text-2xl text-ink-700 dark:text-dark-textSecondary max-w-2xl mx-auto mb-10 leading-relaxed"
             >
               Write collaborative stories with your partner, enhanced by AI. Every chapter is a love letter written together.
             </motion.p>
@@ -142,21 +142,21 @@ export default function LandingPage() {
               {['bg-rose-400', 'bg-gold-400', 'bg-amethyst-400', 'bg-rose-300', 'bg-gold-300'].map((color, i) => (
                 <div
                   key={i}
-                  className={`w-12 h-12 rounded-full ${color} border-4 border-cream-100 flex items-center justify-center text-white text-sm font-accent font-medium`}
+                  className={`w-12 h-12 rounded-full ${color} border-4 border-cream-100 dark:border-dark-bg flex items-center justify-center text-white text-sm font-accent font-medium`}
                 >
                   {String.fromCharCode(65 + i)}
                 </div>
               ))}
             </div>
-            <p className="text-ink-700 font-body">
-              Join <span className="font-semibold text-rose-500">10,000+ couples</span> writing their love stories
+            <p className="text-ink-700 dark:text-dark-textSecondary font-body">
+              Join <span className="font-semibold text-rose-500 dark:text-dark-rose">10,000+ couples</span> writing their love stories
             </p>
           </motion.div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-24 px-6 bg-white relative">
+      <section id="features" className="py-24 px-6 bg-white dark:bg-dark-bgSecondary relative">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -165,10 +165,10 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="font-display text-display-md text-ink-950 mb-4">
+            <h2 className="font-display text-display-md text-ink-950 dark:text-dark-text mb-4">
               Stories are the new love letters
             </h2>
-            <p className="font-body text-xl text-ink-700 max-w-2xl mx-auto">
+            <p className="font-body text-xl text-ink-700 dark:text-dark-textSecondary max-w-2xl mx-auto">
               Every chapter you write together is an act of vulnerability. Every turn you take is a step closer.
             </p>
           </motion.div>
@@ -200,15 +200,15 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.6 }}
-                className="ornate-border card-interactive p-8 rounded-2xl bg-cream-50/50"
+                className="ornate-border card-interactive p-8 rounded-2xl bg-cream-50/50 dark:bg-dark-bgTertiary/50"
               >
-                <div className={`w-14 h-14 rounded-xl bg-${feature.color}-100 flex items-center justify-center mb-6`}>
-                  <feature.icon className={`w-7 h-7 text-${feature.color}-500`} strokeWidth={1.5} />
+                <div className={`w-14 h-14 rounded-xl bg-${feature.color}-100 dark:bg-${feature.color}-950/30 flex items-center justify-center mb-6`}>
+                  <feature.icon className={`w-7 h-7 text-${feature.color}-500 dark:text-${feature.color}-400`} strokeWidth={1.5} />
                 </div>
-                <h3 className="font-display text-2xl text-ink-950 mb-3">
+                <h3 className="font-display text-2xl text-ink-950 dark:text-dark-text mb-3">
                   {feature.title}
                 </h3>
-                <p className="font-body text-ink-700 leading-relaxed">
+                <p className="font-body text-ink-700 dark:text-dark-textSecondary leading-relaxed">
                   {feature.description}
                 </p>
               </motion.div>
@@ -218,7 +218,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-24 px-6 bg-gradient-to-b from-cream-100 to-rose-50">
+      <section id="how-it-works" className="py-24 px-6 bg-gradient-to-b from-cream-100 dark:from-dark-bg to-rose-50 dark:to-rose-950/20">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -227,10 +227,10 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="font-display text-display-md text-ink-950 mb-4">
+            <h2 className="font-display text-display-md text-ink-950 dark:text-dark-text mb-4">
               Write your story, together
             </h2>
-            <p className="font-body text-xl text-ink-700">
+            <p className="font-body text-xl text-ink-700 dark:text-dark-textSecondary">
               Three simple steps to begin your shared narrative
             </p>
           </motion.div>
@@ -259,16 +259,16 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.6 }}
-                className="flex items-start gap-6 p-8 rounded-2xl bg-white shadow-soft"
+                className="flex items-start gap-6 p-8 rounded-2xl bg-white dark:bg-dark-bgSecondary shadow-soft"
               >
-                <span className="font-display text-5xl text-rose-200 font-light">
+                <span className="font-display text-5xl text-rose-200 dark:text-rose-900 font-light">
                   {step.step}
                 </span>
                 <div>
-                  <h3 className="font-display text-2xl text-ink-950 mb-2">
+                  <h3 className="font-display text-2xl text-ink-950 dark:text-dark-text mb-2">
                     {step.title}
                   </h3>
-                  <p className="font-body text-ink-700">
+                  <p className="font-body text-ink-700 dark:text-dark-textSecondary">
                     {step.description}
                   </p>
                 </div>
@@ -279,7 +279,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonial */}
-      <section className="py-24 px-6 bg-ink-950 text-white relative overflow-hidden">
+      <section className="py-24 px-6 bg-ink-950 dark:bg-black text-white relative overflow-hidden">
         {/* Decorative gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-rose-900/20 via-transparent to-amethyst-900/20" />
 
@@ -297,14 +297,14 @@ export default function LandingPage() {
             </blockquote>
             <div>
               <p className="font-accent font-semibold">Sarah & James</p>
-              <p className="text-ink-400 text-sm mt-1">Together 3 years, apart 8 months</p>
+              <p className="text-ink-400 dark:text-white/60 text-sm mt-1">Together 3 years, apart 8 months</p>
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* Story Gallery Preview */}
-      <section id="stories" className="py-24 px-6 bg-white">
+      <section id="stories" className="py-24 px-6 bg-white dark:bg-dark-bgSecondary">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -313,10 +313,10 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="font-display text-display-md text-ink-950 mb-4">
+            <h2 className="font-display text-display-md text-ink-950 dark:text-dark-text mb-4">
               Stories waiting to be written
             </h2>
-            <p className="font-body text-xl text-ink-700">
+            <p className="font-body text-xl text-ink-700 dark:text-dark-textSecondary">
               Start with a theme, or let your imagination guide you
             </p>
           </motion.div>
@@ -397,7 +397,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
           >
-            <Link href="/auth/register" className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-rose-600 rounded-full font-accent font-semibold text-lg hover:shadow-2xl hover:scale-105 transition-all duration-300">
+            <Link href="/auth/register" className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white dark:bg-dark-bg text-rose-600 dark:text-rose-400 rounded-full font-accent font-semibold text-lg hover:shadow-2xl hover:scale-105 transition-all duration-300">
               Begin Your Story
               <ArrowRight className="w-5 h-5" />
             </Link>
@@ -406,16 +406,16 @@ export default function LandingPage() {
       </section>
 
       {/* Features List */}
-      <section className="py-24 px-6 bg-cream-100">
+      <section className="py-24 px-6 bg-cream-100 dark:bg-dark-bg">
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
             <div>
-              <h3 className="font-display text-2xl text-ink-950 mb-6">Always Free</h3>
+              <h3 className="font-display text-2xl text-ink-950 dark:text-dark-text mb-6">Always Free</h3>
               <ul className="space-y-4">
                 {['Unlimited stories', 'Unlimited chapters', 'Real-time collaboration', 'Basic AI enhancement (10/day)'].map((item) => (
-                  <li key={item} className="flex items-center gap-3 text-ink-700">
-                    <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-4 h-4 text-rose-500" strokeWidth={3} />
+                  <li key={item} className="flex items-center gap-3 text-ink-700 dark:text-dark-textSecondary">
+                    <div className="w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-4 h-4 text-rose-500 dark:text-rose-400" strokeWidth={3} />
                     </div>
                     <span className="font-body">{item}</span>
                   </li>
@@ -423,11 +423,11 @@ export default function LandingPage() {
               </ul>
             </div>
             <div>
-              <h3 className="font-display text-2xl text-ink-950 mb-6">Premium Sparks</h3>
+              <h3 className="font-display text-2xl text-ink-950 dark:text-dark-text mb-6">Premium Sparks</h3>
               <ul className="space-y-4">
                 {['Advanced AI enhancement', 'Story illustrations', 'Voice chapters', 'Export as beautiful book'].map((item) => (
-                  <li key={item} className="flex items-center gap-3 text-ink-700">
-                    <Sparkles className="w-5 h-5 text-gold-500" />
+                  <li key={item} className="flex items-center gap-3 text-ink-700 dark:text-dark-textSecondary">
+                    <Sparkles className="w-5 h-5 text-gold-500 dark:text-dark-gold" />
                     <span className="font-body">{item}</span>
                   </li>
                 ))}
@@ -438,7 +438,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-6 bg-ink-950 text-cream-100">
+      <footer className="py-16 px-6 bg-ink-950 dark:bg-black text-cream-100 dark:text-white/80">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div className="md:col-span-2">
@@ -448,29 +448,29 @@ export default function LandingPage() {
                 </div>
                 <span className="font-display text-xl text-white">Parallel Story Builder</span>
               </div>
-              <p className="text-ink-400 font-body max-w-sm">
+              <p className="text-ink-400 dark:text-white/60 font-body max-w-sm">
                 Transform distance into creative fuel. Write beautiful, collaborative stories with your partner.
               </p>
             </div>
             <div>
               <h4 className="font-display text-lg text-white mb-4">Product</h4>
               <ul className="space-y-2">
-                <li><a href="#features" className="text-ink-400 hover:text-rose-400 transition-colors">Features</a></li>
-                <li><a href="#how-it-works" className="text-ink-400 hover:text-rose-400 transition-colors">How It Works</a></li>
-                <li><Link href="/auth/register" className="text-ink-400 hover:text-rose-400 transition-colors">Sign Up</Link></li>
+                <li><a href="#features" className="text-ink-400 dark:text-white/60 hover:text-rose-400 dark:hover:text-rose-400 transition-colors">Features</a></li>
+                <li><a href="#how-it-works" className="text-ink-400 dark:text-white/60 hover:text-rose-400 dark:hover:text-rose-400 transition-colors">How It Works</a></li>
+                <li><Link href="/auth/register" className="text-ink-400 dark:text-white/60 hover:text-rose-400 dark:hover:text-rose-400 transition-colors">Sign Up</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-display text-lg text-white mb-4">Company</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="text-ink-400 hover:text-rose-400 transition-colors">About</a></li>
-                <li><a href="#" className="text-ink-400 hover:text-rose-400 transition-colors">Blog</a></li>
-                <li><a href="#" className="text-ink-400 hover:text-rose-400 transition-colors">Privacy</a></li>
-                <li><a href="#" className="text-ink-400 hover:text-rose-400 transition-colors">Terms</a></li>
+                <li><a href="#" className="text-ink-400 dark:text-white/60 hover:text-rose-400 dark:hover:text-rose-400 transition-colors">About</a></li>
+                <li><a href="#" className="text-ink-400 dark:text-white/60 hover:text-rose-400 dark:hover:text-rose-400 transition-colors">Blog</a></li>
+                <li><a href="#" className="text-ink-400 dark:text-white/60 hover:text-rose-400 dark:hover:text-rose-400 transition-colors">Privacy</a></li>
+                <li><a href="#" className="text-ink-400 dark:text-white/60 hover:text-rose-400 dark:hover:text-rose-400 transition-colors">Terms</a></li>
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t border-ink-800 text-center text-ink-500 text-sm">
+          <div className="pt-8 border-t border-ink-800 dark:border-white/10 text-center text-ink-500 dark:text-white/50 text-sm">
             <p>&copy; {new Date().getFullYear()} Parallel Story Builder. Made with love for long-distance couples everywhere.</p>
           </div>
         </div>

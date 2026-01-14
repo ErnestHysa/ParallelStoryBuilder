@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Romantic, warm palette
+        // Romantic, warm palette (light mode)
         rose: {
           50: '#FDF2F4',
           100: '#FCE7EB',
@@ -63,6 +64,19 @@ const config: Config = {
           900: '#2D2A2E',  // Soft black
           800: '#403C42',
           700: '#534E56',
+        },
+        // Dark mode palette
+        dark: {
+          bg: '#0F0F11',       // Main background
+          bgSecondary: '#1A1A1E', // Secondary background (cards, etc.)
+          bgTertiary: '#242428',  // Tertiary background (inputs, etc.)
+          border: '#3A3A40',    // Border color
+          text: '#F5F5F5',      // Primary text
+          textSecondary: '#A0A0A8', // Secondary text
+          textMuted: '#6B6B72', // Muted text
+          rose: '#E87A9E',      // Dark mode rose (slightly brighter)
+          gold: '#E0B88C',      // Dark mode gold (slightly brighter)
+          amethyst: '#B08FDB',  // Dark mode amethyst (slightly brighter)
         },
       },
       fontFamily: {
