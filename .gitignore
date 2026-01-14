@@ -43,3 +43,5 @@ yarn-error.log*
 
 # Turbo
 .turbo/
+.claude/settings.local.json
+.gitignore
