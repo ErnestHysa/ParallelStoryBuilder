@@ -20,6 +20,7 @@ interface StoriesState {
   currentChapter: Chapter | null;
   subscription: RealtimeChannel | null;
   isConfigured: boolean;
+  presenceInterval: NodeJS.Timeout | null;
 
   // Offline queue and cache
   offlineQueue: Array<{
@@ -121,6 +122,7 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   currentChapter: null,
   subscription: null,
   isConfigured: isSupabaseConfigured(),
+  presenceInterval: null,
 
   // Offline queue and cache
   offlineQueue: [],
@@ -554,6 +556,35 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
           });
       }
 
+      // Fetch the complete story with members and return it
+      // Note: fetchStories is called but we don't await it to avoid blocking
+      // The stories list will update in the background
+      get().fetchStories().catch(err => console.error('Failed to refresh stories list:', err));
+
+      const { data: membersData } = await supabase
+        .from('story_members')
+        .select(`
+          *,
+          profile:profiles(*)
+        `)
+        .eq('story_id', storyData.id);
+
+      const { data: mediaData } = await supabase
+        .from('media_attachments')
+        .select('*')
+        .eq('story_id', storyData.id);
+
+      const storyWithMembers = {
+        ...storyData,
+        members: membersData || [],
+        mediaAttachments: mediaData || [],
+      };
+
+      // Set as current story immediately
+      get().setCurrentStory(storyWithMembers);
+
+      return storyWithMembers;
+
     } catch (error: any) {
       if (error.code === 'PGRST116' || error.code === '429' || !isSupabaseConfigured()) {
         // Network error - queue for offline sync
@@ -589,10 +620,14 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
       return;
     }
 
-    const { subscription: existingSub } = get();
+    const { subscription: existingSub, presenceInterval: existingInterval } = get();
 
+    // Clean up existing subscription and interval
     if (existingSub) {
       existingSub.unsubscribe();
+    }
+    if (existingInterval) {
+      clearInterval(existingInterval);
     }
 
     const channel = supabase
@@ -641,7 +676,7 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
         },
         async () => {
           // Refresh stories list when new member is added
-          get().invalidateStoriesCache();
+          await get().invalidateStoriesCache();
           await get().fetchStories();
         }
       )
@@ -673,22 +708,26 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
       )
       .subscribe();
 
-    set({ subscription: channel });
-
-    // Track presence
+    // Track presence with properly managed interval
     const { trackTokenUsage } = get();
-    setInterval(() => {
+    const presenceInterval = setInterval(() => {
       trackTokenUsage('presence', 0.01);
     }, 30000); // Every 30 seconds
+
+    set({ subscription: channel, presenceInterval });
   },
 
   unsubscribe: () => {
-    const { subscription } = get();
+    const { subscription, presenceInterval } = get();
 
     if (subscription) {
       subscription.unsubscribe();
-      set({ subscription: null });
     }
+    if (presenceInterval) {
+      clearInterval(presenceInterval);
+    }
+
+    set({ subscription: null, presenceInterval: null });
   },
 
   fetchLatestChapter: async (storyId: string) => {
@@ -881,10 +920,27 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
         throw new Error('Attachment not found');
       }
 
-      // Delete from storage
+      // Delete from storage - extract path from full URL
+      // Supabase storage.remove() needs the path, not the full URL
+      let storagePath = attachment.file_url;
+      try {
+        // Extract path from URL: https://xxx.supabase.co/storage/v1/object/public/bucket/path/to/file
+        // The path is everything after /bucket/
+        const urlObj = new URL(attachment.file_url);
+        const pathParts = urlObj.pathname.split('/');
+        // Find the bucket name and get everything after it
+        const bucketIndex = pathParts.indexOf('media');
+        if (bucketIndex !== -1 && bucketIndex < pathParts.length - 1) {
+          storagePath = pathParts.slice(bucketIndex + 1).join('/');
+        }
+      } catch {
+        // If URL parsing fails, use the original file_url
+        storagePath = attachment.file_url;
+      }
+
       await supabase.storage
         .from('media')
-        .remove([attachment.file_url]);
+        .remove([storagePath]);
 
       // Delete from database
       const { error } = await supabase
@@ -1076,6 +1132,9 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
 
     if (offlineQueue.length === 0) return;
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const promises = offlineQueue
       .filter(item => !item.synced)
       .map(async (item) => {
@@ -1084,27 +1143,67 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
           switch (item.type) {
             case 'create':
               // Re-create story or other data
+              if (item.data.title) {
+                // Story creation
+                const { error } = await supabase
+                  .from('stories')
+                  .insert(item.data);
+                if (!error) {
+                  set((state) => ({
+                    offlineQueue: state.offlineQueue.map(q =>
+                      q.id === item.id ? { ...q, synced: true } : q
+                    )
+                  }));
+                }
+              }
               break;
             case 'update':
               // Update existing data
+              if (item.data.story_id) {
+                // Story update or other update
+                const { error } = await supabase
+                  .from('stories')
+                  .update(item.data.updates || {})
+                  .eq('id', item.data.story_id);
+                if (!error) {
+                  set((state) => ({
+                    offlineQueue: state.offlineQueue.map(q =>
+                      q.id === item.id ? { ...q, synced: true } : q
+                    )
+                  }));
+                }
+              }
               break;
             case 'delete':
               // Delete data
+              if (item.data.storyId) {
+                const { error } = await supabase
+                  .from('stories')
+                  .delete()
+                  .eq('id', item.data.storyId);
+                if (!error) {
+                  set((state) => ({
+                    offlineQueue: state.offlineQueue.map(q =>
+                      q.id === item.id ? { ...q, synced: true } : q
+                    )
+                  }));
+                }
+              }
               break;
           }
-
-          // Mark as synced
-          set((state) => ({
-            offlineQueue: state.offlineQueue.map(q =>
-              q.id === item.id ? { ...q, synced: true } : q
-            )
-          }));
         } catch (error) {
           console.error('Error processing offline queue item:', error);
         }
       });
 
     await Promise.allSettled(promises);
+
+    // Remove synced items from queue after a delay
+    setTimeout(() => {
+      set((state) => ({
+        offlineQueue: state.offlineQueue.filter(q => !q.synced)
+      }));
+    }, 5000);
   },
 
   trackTokenUsage: (feature: string, cost: number) => {
@@ -1145,8 +1244,8 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   },
 
   // Add cache invalidation methods
-  invalidateStoriesCache: () => {
-    const { data: { user } } = supabase.auth.getUser();
+  invalidateStoriesCache: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       cacheManager.delete(`stories:${user.id}`);
       queryCache.invalidateQuery(['stories', user.id]);

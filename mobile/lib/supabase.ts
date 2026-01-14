@@ -2,12 +2,23 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Database } from './types';
 
-// Fallback values in case .env is not loaded (e.g. during specific build phases or if restart needed)
-const FALLBACK_SUPABASE_URL = 'https://aljlohdswvemsxlvayvp.supabase.co';
-const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_F6Qb9Wv_yN6g8yipRXrQOw_NXsMd80u';
+// Get Supabase credentials from environment variables
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
+// Validate that credentials are set (unless in demo mode)
+const isDemoMode = !supabaseUrl || supabaseUrl.includes('your-project') || !supabaseAnonKey || supabaseAnonKey.includes('your-anon');
+
+// Export function to check if Supabase is properly configured
+export const isSupabaseConfigured = (): boolean => {
+  return !isDemoMode;
+};
+
+if (!isDemoMode && (!supabaseUrl || !supabaseAnonKey)) {
+  throw new Error(
+    'Supabase credentials are not configured. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file.'
+  );
+}
 
 // Secure storage adapter for session persistence
 // Note: Using a simple in-memory cache for synchronous getItem
@@ -49,7 +60,18 @@ storageAdapter.initialize().catch(() => {
   // Ignore initialization errors
 });
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+// Create Supabase client (with placeholder values for demo mode)
+// In demo mode, the client won't make actual API calls
+export const supabase = isDemoMode
+  ? createClient<Database>('https://demo.placeholder.supabase.co', 'demo-key', {
+      auth: {
+        storage: storageAdapter as any,
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    })
+  : createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: storageAdapter as any,
     autoRefreshToken: true,

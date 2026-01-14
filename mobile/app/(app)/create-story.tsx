@@ -48,6 +48,15 @@ export default function CreateStoryScreen() {
       setError('Title is required');
       return false;
     }
+    // Add title length validation
+    if (title.trim().length < 3) {
+      setError('Title must be at least 3 characters long');
+      return false;
+    }
+    if (title.trim().length > 100) {
+      setError('Title must be less than 100 characters');
+      return false;
+    }
     return true;
   };
 
@@ -67,7 +76,12 @@ export default function CreateStoryScreen() {
       } else {
         createStoryDemo(title, selectedTheme);
       }
-      router.back();
+      // Check if navigation is possible before navigating back
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(app)');
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create story';
       setError(message);

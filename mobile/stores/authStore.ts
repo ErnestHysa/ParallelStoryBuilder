@@ -212,8 +212,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error('No user found or Supabase is not configured.');
     }
 
-    // Note: reauthenticate was deprecated, use getUser instead
-    await supabase.auth.refreshSession();
+    // Note: reauthenticate was deprecated, use refreshSession instead
+    const { error } = await supabase.auth.refreshSession();
 
     if (error) throw error;
   },

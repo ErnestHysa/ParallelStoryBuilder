@@ -292,33 +292,71 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ isSubmitting: true });
 
     try {
-      // Get the current chapter number
-      const { data: lastChapter } = await supabase
-        .from('chapters')
-        .select('chapter_number')
-        .eq('story_id', storyId)
-        .order('chapter_number', { ascending: false })
-        .limit(1)
-        .single();
+      // Insert the new chapter with retry logic for duplicate chapter_number errors
+      // On each retry, re-query the database to get the latest chapter number
+      let chapterData;
+      let retries = 0;
+      const maxRetries = 3;
 
-      const nextChapterNumber = lastChapter ? lastChapter.chapter_number + 1 : 1;
+      while (retries < maxRetries) {
+        // Re-fetch the latest chapter number on each retry to handle concurrent submissions
+        const { data: lastChapter, error: fetchError } = await supabase
+          .from('chapters')
+          .select('chapter_number')
+          .eq('story_id', storyId)
+          .order('chapter_number', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      // Insert the new chapter
-      const { data: chapterData, error: chapterError } = await supabase
-        .from('chapters')
-        .insert({
-          story_id: storyId,
-          author_id: user.id,
-          chapter_number: nextChapterNumber,
-          content: draftContent,
-          ai_enhanced_content: aiEnhancedContent,
-          context_snippet: contextSnippet,
-          media_attachments: mediaAttachments,
-        })
-        .select()
-        .single();
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          throw fetchError;
+        }
 
-      if (chapterError) throw chapterError;
+        const nextChapterNumber = lastChapter ? lastChapter.chapter_number + 1 : 1;
+
+        try {
+          const { data: insertedChapter, error: chapterError } = await supabase
+            .from('chapters')
+            .insert({
+              story_id: storyId,
+              author_id: user.id,
+              chapter_number: nextChapterNumber,
+              content: draftContent,
+              ai_enhanced_content: aiEnhancedContent,
+              context_snippet: contextSnippet,
+              media_attachments: mediaAttachments,
+            })
+            .select()
+            .single();
+
+          if (chapterError) {
+            // If it's a unique constraint violation on chapter_number, retry
+            if (chapterError.code === '23505' && retries < maxRetries - 1) {
+              retries++;
+              continue;
+            }
+            throw chapterError;
+          }
+
+          chapterData = insertedChapter;
+          break;
+        } catch (err) {
+          // On duplicate constraint violation, retry
+          if (err && typeof err === 'object' && 'code' in err && err.code === '23505' && retries < maxRetries - 1) {
+            retries++;
+            continue;
+          }
+          if (retries < maxRetries - 1) {
+            retries++;
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      if (!chapterData) {
+        throw new Error('Failed to insert chapter after multiple retries');
+      }
 
       // Get all members to determine next turn
       const { data: members } = await supabase
@@ -660,24 +698,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
 
     // Sync to server if online
-    if (supabase.auth.getUser()) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('drafts')
-            .insert({
-              id: draft.id,
-              user_id: user.id,
-              story_id: storyId,
-              content: draftContent,
-              context_snippet: contextSnippet,
-              is_auto_saved: true,
-            });
-        }
-      } catch (error) {
-        console.error('Error syncing draft:', error);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('drafts')
+          .insert({
+            id: draft.id,
+            user_id: user.id,
+            story_id: storyId,
+            content: draftContent,
+            context_snippet: contextSnippet,
+            is_auto_saved: true,
+          });
       }
+    } catch (error) {
+      console.error('Error syncing draft:', error);
     }
   },
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   KeyboardAvoidingView,
@@ -154,6 +154,7 @@ export default function WriteChapterScreen() {
     setContextSnippet,
     enhanceWithAI,
     submitChapter,
+    saveDraft,
     reset,
     selectedFormat,
     setFormat,
@@ -169,6 +170,7 @@ export default function WriteChapterScreen() {
   const [showCharacterSuggestions, setShowCharacterSuggestions] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const lastSavedContentRef = useRef(draftContent);
 
   useEffect(() => {
     if (id) {
@@ -182,35 +184,44 @@ export default function WriteChapterScreen() {
       }
     }
 
-    // Auto-save functionality
-    const saveInterval = setInterval(() => {
-      if (draftContent.trim()) {
-        // Implement auto-save logic here
+    // Auto-save functionality - actually saves draft every 30 seconds
+    // Note: We use refs to avoid recreating the interval when content changes
+    const saveInterval = setInterval(async () => {
+      const currentContent = draftContent.trim();
+      const lastSaved = lastSavedContentRef.current.trim();
+
+      // Only save if content has changed
+      if (currentContent && currentContent !== lastSaved && id && isAuthConfigured) {
+        try {
+          await saveDraft(id);
+          setLastSaved(Date.now());
+          lastSavedContentRef.current = draftContent;
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        }
+      } else if (currentContent && currentContent !== lastSaved && id && !isAuthConfigured) {
+        // Demo mode: just update the timestamp
         setLastSaved(Date.now());
+        lastSavedContentRef.current = draftContent;
       }
-    }, 30000); // Auto-save every 30 seconds
+    }, 30000);
 
     return () => {
       clearInterval(saveInterval);
       reset();
     };
-  }, [id, isAuthConfigured]);
-
-  useEffect(() => {
-    // Auto-save on content change
-    if (draftContent.trim()) {
-      const timeout = setTimeout(() => {
-        setLastSaved(Date.now());
-      }, 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [draftContent]);
+  }, [id, isAuthConfigured, saveDraft, reset, fetchStory, getStory]);
 
   const displayStory = isAuthConfigured ? currentStory : story;
 
   const validate = () => {
     if (!draftContent.trim()) {
       setLocalError('Chapter content is required');
+      return false;
+    }
+    // Add minimum length validation
+    if (draftContent.trim().length < 50) {
+      setLocalError('Chapter content must be at least 50 characters long');
       return false;
     }
     return true;
@@ -304,7 +315,14 @@ export default function WriteChapterScreen() {
         [
           {
             text: 'OK',
-            onPress: () => router.back(),
+            onPress: () => {
+              // Check if navigation is possible
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(app)');
+              }
+            },
           },
         ]
       );
@@ -545,7 +563,13 @@ export default function WriteChapterScreen() {
 
             <Button
               variant="ghost"
-              onPress={() => router.back()}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(app)');
+                }
+              }}
               accessibilityLabel="Cancel"
               accessibilityHint="Return to story without submitting"
             >
