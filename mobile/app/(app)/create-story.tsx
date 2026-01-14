@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useStoriesStore } from '@/stores/storiesStore';
+import { useDemoStore } from '@/stores/demoStore';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Card } from '@/components/Card';
@@ -37,7 +39,9 @@ export default function CreateStoryScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const createStory = useStoriesStore((state) => state.createStory);
+  const createStorySupabase = useStoriesStore((state) => state.createStory);
+  const createStoryDemo = useDemoStore((state) => state.createStory);
+  const isConfigured = useAuthStore((state) => state.isConfigured);
 
   const validate = () => {
     if (!title.trim()) {
@@ -56,10 +60,12 @@ export default function CreateStoryScreen() {
     setError('');
 
     try {
-      if (theme) {
-        await createStory(title, theme);
+      const selectedTheme = theme || 'romance';
+
+      if (isConfigured) {
+        await createStorySupabase(title, selectedTheme);
       } else {
-        await createStory(title, 'romance');
+        createStoryDemo(title, selectedTheme);
       }
       router.back();
     } catch (err: unknown) {
