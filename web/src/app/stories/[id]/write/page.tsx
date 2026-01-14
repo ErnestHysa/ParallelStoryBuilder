@@ -16,6 +16,7 @@ import {
   Mic,
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 import type { Story, Chapter } from '@/types';
 import { cn } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
@@ -38,6 +39,7 @@ const writingPrompts = [
 export default function WriteChapterPage() {
   const params = useParams();
   const router = useRouter();
+  const { profile } = useAuthStore();
   const storyId = params.id as string;
 
   const [story, setStory] = useState<Story | null>(null);
@@ -99,15 +101,27 @@ export default function WriteChapterPage() {
 
     try {
       const supabase = getSupabaseClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+
+      // Get current user ID from store or double check with Supabase
+      const userId = profile?.id || (await supabase.auth.getUser()).data.user?.id;
+
+      if (!userId) {
+        toast.error('You must be logged in to save chapters');
+        console.error('Save failed: No authenticated user found');
+        return;
+      }
+
+      console.log('Saving chapter...', {
+        story_id: storyId,
+        author_id: userId,
+        chapter_number: chapterNumber,
+      });
 
       const { data, error } = await supabase
         .from('chapters')
         .insert([{
           story_id: storyId,
-          author_id: user?.id,
+          author_id: userId,
           chapter_number: chapterNumber,
           content: content.trim(),
           context_snippet: contextSnippet.trim() || null,
@@ -115,7 +129,10 @@ export default function WriteChapterPage() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error saving chapter:', error);
+        throw error;
+      }
 
       toast.success('Chapter saved!');
       router.push(`/stories/${storyId}/chapter/${(data as any).id}`);
