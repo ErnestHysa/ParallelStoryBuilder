@@ -38,6 +38,23 @@ export default function NewStoryPage() {
       return;
     }
 
+    // Add title length validation
+    if (title.trim().length < 3) {
+      toast.error('Title must be at least 3 characters long');
+      return;
+    }
+
+    if (title.trim().length > 100) {
+      toast.error('Title must be less than 100 characters');
+      return;
+    }
+
+    if (!profile?.id) {
+      toast.error('You must be logged in to create a story');
+      router.push('/auth/login');
+      return;
+    }
+
     setIsCreating(true);
 
     try {
@@ -49,7 +66,7 @@ export default function NewStoryPage() {
         .insert([{
           title: title.trim(),
           theme: selectedTheme,
-          created_by: profile?.id,
+          created_by: profile.id,
           pairing_code: pairingCode,
           status: 'active',
         }] as any)
@@ -63,7 +80,7 @@ export default function NewStoryPage() {
         .from('story_members')
         .insert([{
           story_id: (data as any).id,
-          user_id: profile?.id,
+          user_id: profile.id,
           role: 'creator',
           turn_order: 1,
         }] as any);
@@ -74,7 +91,7 @@ export default function NewStoryPage() {
           .from('chapters')
           .insert([{
             story_id: (data as any).id,
-            author_id: profile?.id,
+            author_id: profile.id,
             chapter_number: 1,
             content: storyStarters[starterIndex],
           }] as any);
@@ -107,7 +124,7 @@ export default function NewStoryPage() {
         {/* Back button */}
         <motion.button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-ink-700 hover:text-rose-500 font-body mb-8 transition-colors"
+          className="flex items-center gap-2 text-ink-700 dark:text-dark-textSecondary hover:text-rose-500 dark:hover:text-dark-rose font-body mb-8 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Stories
@@ -119,14 +136,14 @@ export default function NewStoryPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 border border-rose-100 mb-4">
-            <Sparkles className="w-4 h-4 text-rose-500" />
-            <span className="text-sm font-accent text-rose-600">Begin your journey</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 mb-4">
+            <Sparkles className="w-4 h-4 text-rose-500 dark:text-dark-rose" />
+            <span className="text-sm font-accent text-rose-600 dark:text-rose-400">Begin your journey</span>
           </div>
-          <h1 className="font-display text-display-md text-ink-950 mb-2">
+          <h1 className="font-display text-display-md text-ink-950 dark:text-dark-text mb-2">
             Create a new story
           </h1>
-          <p className="font-body text-xl text-ink-700">
+          <p className="font-body text-xl text-ink-700 dark:text-dark-textSecondary">
             Choose a theme, give it a title, and invite your partner to write with you
           </p>
         </motion.div>
@@ -139,7 +156,7 @@ export default function NewStoryPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <label className="block text-sm font-accent text-ink-800 mb-3">
+            <label className="block text-sm font-accent text-ink-800 dark:text-dark-text mb-3">
               Story Title
             </label>
             <input
@@ -150,7 +167,7 @@ export default function NewStoryPage() {
               className="input-field text-lg px-6 py-4"
               maxLength={100}
             />
-            <p className="text-sm text-ink-600 mt-2 font-body">
+            <p className="text-sm text-ink-600 dark:text-dark-textMuted mt-2 font-body">
               {title.length}/100 characters
             </p>
           </motion.div>
@@ -161,7 +178,7 @@ export default function NewStoryPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <label className="block text-sm font-accent text-ink-800 mb-3">
+            <label className="block text-sm font-accent text-ink-800 dark:text-dark-text mb-3">
               Choose a Theme
             </label>
             <div className="grid sm:grid-cols-3 gap-4">
@@ -171,8 +188,8 @@ export default function NewStoryPage() {
                   onClick={() => setSelectedTheme(theme.id)}
                   className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${
                     selectedTheme === theme.id
-                      ? 'border-rose-500 bg-rose-50 shadow-elegant scale-105'
-                      : 'border-cream-300 bg-white hover:border-rose-300 hover:shadow-soft'
+                      ? 'border-rose-500 dark:border-dark-rose bg-rose-50 dark:bg-rose-950/30 shadow-elegant scale-105'
+                      : 'border-cream-300 dark:border-dark-border bg-white dark:bg-dark-bgSecondary hover:border-rose-300 dark:hover:border-rose-700 hover:shadow-soft'
                   }`}
                 >
                   <div className={`absolute inset-0 bg-gradient-to-br ${theme.color} opacity-0 rounded-2xl transition-opacity ${
@@ -180,13 +197,13 @@ export default function NewStoryPage() {
                   }`} />
                   <div className="relative">
                     <span className="text-4xl mb-3 block">{theme.emoji}</span>
-                    <h3 className="font-display text-xl text-ink-950 mb-1">{theme.name}</h3>
-                    <p className="text-sm text-ink-600 font-body">{theme.description}</p>
+                    <h3 className="font-display text-xl text-ink-950 dark:text-dark-text mb-1">{theme.name}</h3>
+                    <p className="text-sm text-ink-600 dark:text-dark-textMuted font-body">{theme.description}</p>
                   </div>
                   {selectedTheme === theme.id && (
                     <motion.div
                       layoutId="selectedTheme"
-                      className="absolute top-4 right-4 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center"
+                      className="absolute top-4 right-4 w-6 h-6 bg-rose-500 dark:bg-dark-rose rounded-full flex items-center justify-center"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                     >
                       <Check className="w-4 h-4 text-white" />
@@ -203,10 +220,10 @@ export default function NewStoryPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <label className="block text-sm font-accent text-ink-800 mb-3">
-              Story Starter <span className="text-ink-500 font-normal">(Optional)</span>
+            <label className="block text-sm font-accent text-ink-800 dark:text-dark-text mb-3">
+              Story Starter <span className="text-ink-500 dark:text-dark-textMuted font-normal">(Optional)</span>
             </label>
-            <p className="text-sm text-ink-600 mb-4 font-body">
+            <p className="text-sm text-ink-600 dark:text-dark-textMuted mb-4 font-body">
               Choose an opening line to get started, or begin with a blank page
             </p>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -216,23 +233,23 @@ export default function NewStoryPage() {
                   onClick={() => setStarterIndex(starterIndex === index ? null : index)}
                   className={`text-left p-4 rounded-xl border-2 transition-all duration-300 ${
                     starterIndex === index
-                      ? 'border-amethyst-500 bg-amethyst-50'
-                      : 'border-cream-300 bg-white hover:border-amethyst-300'
+                      ? 'border-amethyst-500 dark:border-amethyst-400 bg-amethyst-50 dark:bg-amethyst-950/30'
+                      : 'border-cream-300 dark:border-dark-border bg-white dark:bg-dark-bgSecondary hover:border-amethyst-300 dark:hover:border-amethyst-700'
                   }`}
                 >
-                  <p className="font-body text-ink-800 italic">{starter}</p>
+                  <p className="font-body text-ink-800 dark:text-dark-text">{starter}</p>
                 </button>
               ))}
               <button
                 onClick={() => setStarterIndex(null)}
                 className={`text-left p-4 rounded-xl border-2 transition-all duration-300 flex items-center justify-center gap-2 ${
                   starterIndex === null
-                    ? 'border-rose-500 bg-rose-50'
-                    : 'border-cream-300 bg-white hover:border-rose-300'
+                    ? 'border-rose-500 dark:border-dark-rose bg-rose-50 dark:bg-rose-950/30'
+                    : 'border-cream-300 dark:border-dark-border bg-white dark:bg-dark-bgSecondary hover:border-rose-300 dark:hover:border-rose-700'
                 }`}
               >
-                <Compass className="w-5 h-5 text-rose-500" />
-                <span className="font-accent font-medium text-ink-950">Start from scratch</span>
+                <Compass className="w-5 h-5 text-rose-500 dark:text-dark-rose" />
+                <span className="font-accent font-medium text-ink-950 dark:text-dark-text">Start from scratch</span>
               </button>
             </div>
           </motion.div>
@@ -265,7 +282,7 @@ export default function NewStoryPage() {
                 </>
               )}
             </button>
-            <p className="text-center text-sm text-ink-600 mt-4 font-body">
+            <p className="text-center text-sm text-ink-600 dark:text-dark-textMuted mt-4 font-body">
               After creating, you'll get a pairing code to share with your partner
             </p>
           </motion.div>

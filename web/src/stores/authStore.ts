@@ -129,9 +129,16 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signOut: async () => {
-        const supabase = getSupabaseClient();
-        await supabase.auth.signOut();
-        set({ user: null, profile: null, session: null });
+        try {
+          const supabase = getSupabaseClient();
+          await supabase.auth.signOut();
+          set({ user: null, profile: null, session: null });
+        } catch (error) {
+          console.error('Error during sign out:', error);
+          // Still clear local state even if sign out fails on server
+          set({ user: null, profile: null, session: null });
+          throw error;
+        }
       },
 
       refreshProfile: async () => {

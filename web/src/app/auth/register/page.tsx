@@ -97,23 +97,23 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream-100 via-rose-50 to-cream-100 flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-cream-100 dark:from-dark-bg via-rose-50 dark:via-rose-950/20 to-cream-100 dark:to-dark-bg flex items-center justify-center p-6 relative overflow-hidden">
       {/* Floating decorative elements */}
       <div className="absolute inset-0 pointer-events-none">
         <motion.div
           animate={{ y: [0, -40, 0], rotate: [0, 15, 0] }}
           transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-20 left-[10%] w-4 h-4 bg-rose-300/40 rounded-full blur-md"
+          className="absolute top-20 left-[10%] w-4 h-4 bg-rose-300/40 dark:bg-rose-700/30 rounded-full blur-md"
         />
         <motion.div
           animate={{ y: [0, 50, 0], rotate: [0, -20, 0] }}
           transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute bottom-20 right-[15%] w-6 h-6 bg-gold-300/40 rounded-full blur-md"
+          className="absolute bottom-20 right-[15%] w-6 h-6 bg-gold-300/40 dark:bg-gold-700/30 rounded-full blur-md"
         />
         <motion.div
           animate={{ y: [0, -30, 0], rotate: [0, 25, 0] }}
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/2 left-[20%] w-3 h-3 bg-amethyst-300/40 rounded-full blur-md"
+          className="absolute top-1/2 left-[20%] w-3 h-3 bg-amethyst-300/40 dark:bg-amethyst-700/30 rounded-full blur-md"
         />
       </div>
 
@@ -139,20 +139,20 @@ export default function RegisterPage() {
           <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-amethyst-600 rounded-xl flex items-center justify-center shadow-elegant">
             <Feather className="w-5 h-5 text-white" strokeWidth={2.5} />
           </div>
-          <span className="font-display text-2xl text-ink-950">Parallel</span>
+          <span className="font-display text-2xl text-ink-950 dark:text-dark-text">Parallel</span>
         </Link>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-elegant p-8 md:p-10 ornate-border">
+        <div className="bg-white dark:bg-dark-bgSecondary rounded-3xl shadow-elegant p-8 md:p-10 ornate-border">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 border border-rose-100 mb-4">
-              <Sparkles className="w-4 h-4 text-rose-500" />
-              <span className="text-sm font-accent text-rose-600">Begin your story</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 mb-4">
+              <Sparkles className="w-4 h-4 text-rose-500 dark:text-dark-rose" />
+              <span className="text-sm font-accent text-rose-600 dark:text-rose-400">Begin your story</span>
             </div>
-            <h1 className="font-display text-3xl text-ink-950 mb-2">
+            <h1 className="font-display text-3xl text-ink-950 dark:text-dark-text mb-2">
               Create your account
             </h1>
-            <p className="font-body text-ink-700">
+            <p className="font-body text-ink-700 dark:text-dark-textSecondary">
               Start writing your love story today
             </p>
           </div>
@@ -160,11 +160,11 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Display Name */}
             <div>
-              <label htmlFor="displayName" className="block text-sm font-accent text-ink-800 mb-2">
+              <label htmlFor="displayName" className="block text-sm font-accent text-ink-800 dark:text-dark-text mb-2">
                 Your Name
               </label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700 dark:text-dark-textSecondary" />
                 <input
                   id="displayName"
                   name="displayName"
@@ -184,11 +184,11 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-accent text-ink-800 mb-2">
+              <label htmlFor="email" className="block text-sm font-accent text-ink-800 dark:text-dark-text mb-2">
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700 dark:text-dark-textSecondary" />
                 <input
                   id="email"
                   name="email"
@@ -208,11 +208,11 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-accent text-ink-800 mb-2">
+              <label htmlFor="password" className="block text-sm font-accent text-ink-800 dark:text-dark-text mb-2">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700 dark:text-dark-textSecondary" />
                 <input
                   id="password"
                   name="password"
@@ -227,7 +227,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-700 hover:text-ink-950 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-700 dark:text-dark-textSecondary hover:text-ink-950 dark:hover:text-dark-text transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -235,17 +235,17 @@ export default function RegisterPage() {
               {errors.password ? (
                 <p className="text-red-500 text-sm mt-1 font-body">{errors.password}</p>
               ) : (
-                <p className="text-ink-500 text-sm mt-1 font-body">8+ characters, uppercase, lowercase, and a number</p>
+                <p className="text-ink-500 dark:text-dark-textMuted text-sm mt-1 font-body">8+ characters, uppercase, lowercase, and a number</p>
               )}
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-accent text-ink-800 mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-accent text-ink-800 dark:text-dark-text mb-2">
                 Confirm Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-700 dark:text-dark-textSecondary" />
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -269,14 +269,14 @@ export default function RegisterPage() {
                 type="checkbox"
                 id="terms"
                 required
-                className="mt-1 w-4 h-4 text-rose-500 border-cream-400 rounded focus:ring-rose-300"
+                className="mt-1 w-4 h-4 text-rose-500 dark:text-rose-400 border-cream-400 dark:border-dark-border rounded focus:ring-rose-300 dark:focus:ring-rose-700"
                 disabled={isLoading}
               />
-              <label htmlFor="terms" className="text-sm text-ink-700 font-body">
+              <label htmlFor="terms" className="text-sm text-ink-700 dark:text-dark-textSecondary font-body">
                 I agree to the{' '}
-                <Link href="/terms" className="text-rose-500 hover:text-rose-600">Terms of Service</Link>
+                <Link href="/terms" className="text-rose-500 dark:text-dark-rose hover:text-rose-600 dark:hover:text-rose-400">Terms of Service</Link>
                 {' '}and{' '}
-                <Link href="/privacy" className="text-rose-500 hover:text-rose-600">Privacy Policy</Link>
+                <Link href="/privacy" className="text-rose-500 dark:text-dark-rose hover:text-rose-600 dark:hover:text-rose-400">Privacy Policy</Link>
               </label>
             </div>
 
@@ -306,15 +306,15 @@ export default function RegisterPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-4 my-8">
-            <div className="flex-1 h-px bg-cream-300" />
-            <span className="text-sm text-ink-500 font-body">or</span>
-            <div className="flex-1 h-px bg-cream-300" />
+            <div className="flex-1 h-px bg-cream-300 dark:bg-dark-border" />
+            <span className="text-sm text-ink-500 dark:text-dark-textMuted font-body">or</span>
+            <div className="flex-1 h-px bg-cream-300 dark:bg-dark-border" />
           </div>
 
           {/* Login Link */}
-          <p className="text-center text-ink-700 font-body">
+          <p className="text-center text-ink-700 dark:text-dark-textSecondary font-body">
             Already have an account?{' '}
-            <Link href="/auth/login" className="text-rose-500 hover:text-rose-600 font-accent font-semibold">
+            <Link href="/auth/login" className="text-rose-500 dark:text-dark-rose hover:text-rose-600 dark:hover:text-rose-400 font-accent font-semibold">
               Sign in
             </Link>
           </p>

@@ -124,7 +124,7 @@ export default function StoryDetailPage() {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-rose-200 border-t-rose-500 rounded-full"
+          className="w-12 h-12 border-4 border-rose-200 dark:border-rose-900 border-t-rose-500 dark:border-t-rose-400 rounded-full"
         />
       </div>
     );
@@ -133,8 +133,8 @@ export default function StoryDetailPage() {
   if (!story) {
     return (
       <div className="text-center py-16">
-        <h2 className="font-display text-2xl text-ink-950 mb-4">Story not found</h2>
-        <Link href="/stories" className="text-rose-500 hover:text-rose-600">
+        <h2 className="font-display text-2xl text-ink-950 dark:text-dark-text mb-4">Story not found</h2>
+        <Link href="/stories" className="text-rose-500 dark:text-dark-rose hover:text-rose-600 dark:hover:text-rose-400">
           Back to your stories
         </Link>
       </div>
@@ -161,7 +161,7 @@ export default function StoryDetailPage() {
         {/* Back Button */}
         <motion.button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-ink-700 hover:text-rose-500 font-body transition-colors"
+          className="flex items-center gap-2 text-ink-700 dark:text-dark-textSecondary hover:text-rose-500 dark:hover:text-dark-rose font-body transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Stories
@@ -210,7 +210,7 @@ export default function StoryDetailPage() {
               <div className="flex items-center gap-2">
                 <Link
                   href={`/stories/${story.id}/write`}
-                  className="flex items-center gap-2 px-4 py-2 bg-white text-ink-950 rounded-full font-accent font-medium hover:shadow-elegant transition-all"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-bgSecondary text-ink-950 dark:text-dark-text rounded-full font-accent font-medium hover:shadow-elegant transition-all"
                 >
                   <Edit3 className="w-4 h-4" />
                   Write
@@ -231,18 +231,18 @@ export default function StoryDetailPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-white rounded-xl p-4 shadow-elegant"
+                  className="bg-white dark:bg-dark-bgSecondary rounded-xl p-4 shadow-elegant"
                 >
-                  <p className="text-sm text-ink-700 mb-3 font-body">
+                  <p className="text-sm text-ink-700 dark:text-dark-textSecondary mb-3 font-body">
                     Share this code with your partner to invite them to your story:
                   </p>
                   <div className="flex items-center gap-3">
-                    <code className="flex-1 px-4 py-3 bg-cream-100 rounded-lg font-mono text-xl tracking-wider text-ink-950">
+                    <code className="flex-1 px-4 py-3 bg-cream-100 dark:bg-dark-bgTertiary rounded-lg font-mono text-xl tracking-wider text-ink-950 dark:text-dark-text">
                       {story.pairing_code}
                     </code>
                     <button
                       onClick={copyPairingCode}
-                      className="p-3 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors"
+                      className="p-3 bg-rose-500 dark:bg-dark-rose text-white rounded-lg hover:bg-rose-600 dark:hover:bg-rose-400 transition-colors"
                     >
                       {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                     </button>
@@ -260,10 +260,10 @@ export default function StoryDetailPage() {
           transition={{ delay: 0.1 }}
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl text-ink-950">Chapters</h2>
+            <h2 className="font-display text-2xl text-ink-950 dark:text-dark-text">Chapters</h2>
             <Link
               href={`/stories/${story.id}/write`}
-              className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-full font-accent text-sm hover:bg-rose-600 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-rose-500 dark:bg-dark-rose text-white rounded-full font-accent text-sm hover:bg-rose-600 dark:hover:bg-rose-400 transition-colors"
             >
               <Plus className="w-4 h-4" />
               New Chapter
@@ -271,17 +271,17 @@ export default function StoryDetailPage() {
           </div>
 
           {chapters.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl shadow-soft">
-              <div className="w-20 h-20 rounded-full bg-cream-200 flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="w-10 h-10 text-ink-400" />
+            <div className="text-center py-16 bg-white dark:bg-dark-bgSecondary rounded-2xl shadow-soft">
+              <div className="w-20 h-20 rounded-full bg-cream-200 dark:bg-dark-bgTertiary flex items-center justify-center mx-auto mb-6">
+                <BookOpen className="w-10 h-10 text-ink-400 dark:text-dark-textMuted" />
               </div>
-              <h3 className="font-display text-xl text-ink-950 mb-2">No chapters yet</h3>
-              <p className="font-body text-ink-700 mb-6">
+              <h3 className="font-display text-xl text-ink-950 dark:text-dark-text mb-2">No chapters yet</h3>
+              <p className="font-body text-ink-700 dark:text-dark-textSecondary mb-6">
                 Every story starts with a single word. Begin writing your first chapter.
               </p>
               <Link
                 href={`/stories/${story.id}/write`}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-full font-accent hover:bg-rose-600 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 dark:bg-dark-rose text-white rounded-full font-accent hover:bg-rose-600 dark:hover:bg-rose-400 transition-colors"
               >
                 <Edit3 className="w-5 h-5" />
                 Write First Chapter
@@ -297,26 +297,26 @@ export default function StoryDetailPage() {
                   transition={{ delay: index * 0.05 }}
                 >
                   <Link href={`/stories/${story.id}/chapter/${chapter.id}`}>
-                    <div className="group p-6 bg-white rounded-2xl shadow-soft hover:shadow-medium transition-all cursor-pointer">
+                    <div className="group p-6 bg-white dark:bg-dark-bgSecondary rounded-2xl shadow-soft hover:shadow-medium transition-all cursor-pointer">
                       <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-100 to-amethyst-100 flex items-center justify-center flex-shrink-0">
-                          <span className="font-display text-xl text-rose-600">{chapter.chapter_number}</span>
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-100 dark:from-rose-900/30 to-amethyst-100 dark:to-amethyst-900/30 flex items-center justify-center flex-shrink-0">
+                          <span className="font-display text-xl text-rose-600 dark:text-rose-400">{chapter.chapter_number}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-display text-lg text-ink-950 mb-1 group-hover:text-rose-500 transition-colors">
+                          <h3 className="font-display text-lg text-ink-950 dark:text-dark-text mb-1 group-hover:text-rose-500 dark:group-hover:text-dark-rose transition-colors">
                             Chapter {chapter.chapter_number}
                           </h3>
-                          <p className="font-body text-ink-600 line-clamp-2 mb-2">
+                          <p className="font-body text-ink-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
                             {chapter.content}
                           </p>
-                          <div className="flex items-center gap-3 text-sm text-ink-500">
+                          <div className="flex items-center gap-3 text-sm text-ink-500 dark:text-dark-textMuted">
                             <span>{formatDate(chapter.created_at)}</span>
                             <span>•</span>
                             <span>{Math.ceil(chapter.content.length / 200)} min read</span>
                             {chapter.ai_enhanced_content && (
                               <>
                                 <span>•</span>
-                                <span className="flex items-center gap-1 text-amethyst-500">
+                                <span className="flex items-center gap-1 text-amethyst-500 dark:text-amethyst-400">
                                   <Sparkles className="w-3 h-3" />
                                   AI Enhanced
                                 </span>
@@ -324,7 +324,7 @@ export default function StoryDetailPage() {
                             )}
                           </div>
                         </div>
-                        <ChevronDown className="w-5 h-5 text-ink-400 group-hover:text-ink-600 transition-colors rotate-[-90deg]" />
+                        <ChevronDown className="w-5 h-5 text-ink-400 dark:text-dark-textMuted group-hover:text-ink-600 dark:group-hover:text-dark-text transition-colors rotate-[-90deg]" />
                       </div>
                     </div>
                   </Link>

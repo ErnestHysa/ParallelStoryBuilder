@@ -1,20 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types';
 
-// Fallback values in case .env is not loaded
-const FALLBACK_SUPABASE_URL = 'https://aljlohdswvemsxlvayvp.supabase.co';
-const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_F6Qb9Wv_yN6g8yipRXrQOw_NXsMd80u';
+// Get Supabase credentials from environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
+// Validate that credentials are set (unless in demo mode)
+const isDemoMode = !supabaseUrl || supabaseUrl.includes('your-project') || !supabaseAnonKey || supabaseAnonKey.includes('your-anon');
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL or Anon Key is missing. Some features may not work.');
+// Export function to check if Supabase is properly configured
+export const isSupabaseConfigured = (): boolean => {
+  return !isDemoMode;
+};
+
+if (!isDemoMode && (!supabaseUrl || !supabaseAnonKey)) {
+  throw new Error(
+    'Supabase credentials are not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env file.'
+  );
 }
+
+// Use demo mode placeholders if not configured
+const finalSupabaseUrl = isDemoMode ? 'https://demo.placeholder.supabase.co' : supabaseUrl;
+const finalSupabaseAnonKey = isDemoMode ? 'demo-key' : supabaseAnonKey;
 
 // Create browser client
 export const createBrowserClient = () =>
-  createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  createClient<Database>(finalSupabaseUrl, finalSupabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -38,6 +49,7 @@ export const getSupabaseClient = () => {
   return browserClient;
 };
 
-export const supabase = typeof window === 'undefined'
-  ? null
-  : createBrowserClient();
+// Export a function to check configuration status (for use in components)
+export const checkSupabaseConfigured = (): boolean => {
+  return isSupabaseConfigured();
+};

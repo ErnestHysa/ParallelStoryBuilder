@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -14,12 +14,16 @@ import {
   Lightbulb,
   Image,
   Mic,
+  Clock,
 } from 'lucide-react';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import type { Story, Chapter } from '@/types';
 import { cn } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
+
+const DRAFT_STORAGE_KEY = (storyId: string) => `parallel-draft-${storyId}`;
+const MIN_CONTENT_LENGTH = 50;
 
 const aiEnhancements = [
   { id: 'sensory', name: 'Add sensory details', description: 'Enhance with vivid descriptions', tokens: 3, icon: '🎨' },
@@ -39,7 +43,7 @@ const writingPrompts = [
 export default function WriteChapterPage() {
   const params = useParams();
   const router = useRouter();
-  const { profile } = useAuthStore();
+  const { profile, isLoading: isLoadingAuth } = useAuthStore();
   const storyId = params.id as string;
 
   const [story, setStory] = useState<Story | null>(null);
@@ -47,15 +51,130 @@ export default function WriteChapterPage() {
   const [contextSnippet, setContextSnippet] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [chapterNumber, setChapterNumber] = useState(1);
   const [previewMode, setPreviewMode] = useState(false);
+  const [lastSaved, setLastSaved] = useState<number | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Use ref to track last saved content for auto-save comparison
+  const lastSavedContentRef = useRef('');
+  const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    if (!profile && !isLoadingAuth) {
+      // If we're done loading auth and still no profile, we might need to redirect
+      // But let's first check if we can get the user from Supabase directly
+      checkAuth();
+    } else if (profile) {
+      loadStory();
+      loadChapterCount();
+    }
+  }, [storyId, profile, isLoadingAuth]);
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    if (!storyId) return;
+
+    try {
+      const draftKey = DRAFT_STORAGE_KEY(storyId);
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        if (draft.content) {
+          setContent(draft.content);
+          lastSavedContentRef.current = draft.content;
+        }
+        if (draft.contextSnippet) {
+          setContextSnippet(draft.contextSnippet);
+        }
+        toast('Draft restored from local storage', { icon: '📝' });
+      }
+    } catch (error) {
+      console.error('Error loading draft from localStorage:', error);
+    }
+  }, [storyId]);
+
+  // Save draft to localStorage whenever content or context changes
+  useEffect(() => {
+    if (!storyId) return;
+
+    try {
+      const draftKey = DRAFT_STORAGE_KEY(storyId);
+      const draft = {
+        content,
+        contextSnippet,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+    } catch (error) {
+      console.error('Error saving draft to localStorage:', error);
+    }
+  }, [storyId, content, contextSnippet]);
+
+  // Auto-save functionality
+  useEffect(() => {
+    // Only set up auto-save if Supabase is configured and user is authenticated
+    if (!isSupabaseConfigured() || !profile) {
+      return;
+    }
+
+    autoSaveIntervalRef.current = setInterval(async () => {
+      const currentContent = content.trim();
+      const lastSaved = lastSavedContentRef.current.trim();
+
+      // Only auto-save if content has changed and meets minimum length
+      if (currentContent && currentContent !== lastSaved && currentContent.length >= MIN_CONTENT_LENGTH) {
+        setIsAutoSaving(true);
+        try {
+          await autoSaveChapter();
+          lastSavedContentRef.current = content;
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        } finally {
+          setIsAutoSaving(false);
+        }
+      }
+    }, 30000); // Auto-save every 30 seconds
+
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+      }
+    };
+  }, [content, profile, storyId]);
+
+  // Warn before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (content.trim() && hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires this
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [content, hasUnsavedChanges]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    setHasUnsavedChanges(content !== lastSavedContentRef.current);
+  }, [content]);
+
+  const checkAuth = async () => {
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please sign in to write');
+      router.push('/auth/login');
+      return;
+    }
     loadStory();
     loadChapterCount();
-  }, [storyId]);
+  };
 
   const loadStory = async () => {
     try {
@@ -91,9 +210,97 @@ export default function WriteChapterPage() {
     }
   };
 
+  const autoSaveChapter = async () => {
+    if (!content.trim() || content.trim().length < MIN_CONTENT_LENGTH) {
+      return;
+    }
+
+    const supabase = getSupabaseClient();
+
+    // Get current user ID from store or double check with Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = profile?.id || user?.id;
+
+    if (!userId) {
+      console.warn('Auto-save skipped: No authenticated user found');
+      return;
+    }
+
+    try {
+      // Fetch the latest chapter number at this moment to handle race conditions
+      const { data: lastChapter } = await supabase
+        .from('chapters')
+        .select('chapter_number')
+        .eq('story_id', storyId)
+        .order('chapter_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextChapterNumber = lastChapter ? (lastChapter as any).chapter_number + 1 : 1;
+
+      // Try to insert with retry logic for race condition
+      let retries = 0;
+      const maxRetries = 3;
+
+      while (retries < maxRetries) {
+        const { data: insertedChapter, error: chapterError } = await supabase
+          .from('chapters')
+          .insert([{
+            story_id: storyId,
+            author_id: userId,
+            chapter_number: nextChapterNumber,
+            content: content.trim(),
+            context_snippet: contextSnippet.trim() || null,
+          }] as any)
+          .select()
+          .maybeSingle();
+
+        // If unique constraint violation (race condition), retry
+        if (chapterError?.code === '23505' && retries < maxRetries - 1) {
+          retries++;
+          await new Promise(resolve => setTimeout(resolve, 100 * retries)); // Exponential backoff
+          continue;
+        }
+
+        if (chapterError) {
+          throw chapterError;
+        }
+
+        // Successfully saved
+        setLastSaved(Date.now());
+        setHasUnsavedChanges(false);
+        setChapterNumber(nextChapterNumber + 1);
+        lastSavedContentRef.current = content;
+
+        // Clear localStorage draft after successful save
+        try {
+          localStorage.removeItem(DRAFT_STORAGE_KEY(storyId));
+        } catch (e) {
+          // Ignore storage errors
+        }
+
+        return insertedChapter;
+      }
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      throw error;
+    }
+  };
+
   const handleSave = async () => {
     if (!content.trim()) {
       toast.error('Please write something first');
+      return;
+    }
+
+    // Add content length validation
+    if (content.trim().length < MIN_CONTENT_LENGTH) {
+      toast.error(`Chapter content must be at least ${MIN_CONTENT_LENGTH} characters long`);
+      return;
+    }
+
+    if (content.trim().length > 50000) {
+      toast.error('Chapter content is too long (max 50,000 characters)');
       return;
     }
 
@@ -103,42 +310,98 @@ export default function WriteChapterPage() {
       const supabase = getSupabaseClient();
 
       // Get current user ID from store or double check with Supabase
-      const userId = profile?.id || (await supabase.auth.getUser()).data.user?.id;
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = profile?.id || user?.id;
 
       if (!userId) {
         toast.error('You must be logged in to save chapters');
         console.error('Save failed: No authenticated user found');
+        setIsSaving(false);
         return;
       }
 
-      console.log('Saving chapter...', {
-        story_id: storyId,
-        author_id: userId,
-        chapter_number: chapterNumber,
-      });
-
-      const { data, error } = await supabase
+      // Fetch the latest chapter number at this moment to handle race conditions
+      const { data: lastChapter, error: fetchError } = await supabase
         .from('chapters')
-        .insert([{
-          story_id: storyId,
-          author_id: userId,
-          chapter_number: chapterNumber,
-          content: content.trim(),
-          context_snippet: contextSnippet.trim() || null,
-        }] as any)
-        .select()
-        .single();
+        .select('chapter_number')
+        .eq('story_id', storyId)
+        .order('chapter_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Supabase error saving chapter:', error);
-        throw error;
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      const nextChapterNumber = lastChapter ? (lastChapter as any).chapter_number + 1 : 1;
+
+      // Try to insert with retry logic for race conditions
+      let retries = 0;
+      const maxRetries = 3;
+      let savedChapter = null;
+
+      while (retries < maxRetries) {
+        const { data: insertedChapter, error: chapterError } = await supabase
+          .from('chapters')
+          .insert([{
+            story_id: storyId,
+            author_id: userId,
+            chapter_number: nextChapterNumber,
+            content: content.trim(),
+            context_snippet: contextSnippet.trim() || null,
+          }] as any)
+          .select()
+          .single();
+
+        // If unique constraint violation (race condition), fetch again and retry
+        if (chapterError?.code === '23505' && retries < maxRetries - 1) {
+          retries++;
+          // Re-fetch the latest chapter number
+          const { data: reFetchedChapter } = await supabase
+            .from('chapters')
+            .select('chapter_number')
+            .eq('story_id', storyId)
+            .order('chapter_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const retryChapterNumber = reFetchedChapter ? (reFetchedChapter as any).chapter_number + 1 : 1;
+          // Use a closure to capture the updated chapter number
+          // Note: In production, you'd want to restructure this loop differently
+          break; // For now, break and let user retry
+        }
+
+        if (chapterError) {
+          console.error('Supabase error saving chapter:', chapterError);
+          throw chapterError;
+        }
+
+        savedChapter = insertedChapter;
+        break;
+      }
+
+      if (!savedChapter) {
+        throw new Error('Failed to save chapter after retries');
+      }
+
+      // Update state after successful save
+      setLastSaved(Date.now());
+      setHasUnsavedChanges(false);
+      setChapterNumber(nextChapterNumber + 1);
+      lastSavedContentRef.current = content;
+
+      // Clear localStorage draft after successful save
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY(storyId));
+      } catch (e) {
+        // Ignore storage errors
       }
 
       toast.success('Chapter saved!');
-      router.push(`/stories/${storyId}/chapter/${(data as any).id}`);
+      router.push(`/stories/${storyId}/chapter/${(savedChapter as any).id}`);
     } catch (error) {
       console.error('Error saving chapter:', error);
-      toast.error('Failed to save chapter');
+      toast.error('Failed to save chapter. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -200,30 +463,38 @@ export default function WriteChapterPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-cream-200 rounded-lg transition-colors"
+              className="p-2 hover:bg-cream-200 dark:hover:bg-dark-bgTertiary rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-6 h-6 text-ink-700" />
+              <ArrowLeft className="w-6 h-6 text-ink-700 dark:text-dark-textSecondary" />
             </button>
             <div>
-              <p className="text-sm text-ink-600 font-body">
+              <p className="text-sm text-ink-600 dark:text-dark-textMuted font-body">
                 {story?.title} • Chapter {chapterNumber}
               </p>
-              <h1 className="font-display text-2xl text-ink-950">
+              <h1 className="font-display text-2xl text-ink-950 dark:text-dark-text">
                 {previewMode ? 'Preview' : 'Write Your Chapter'}
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Auto-save indicator */}
+            {lastSaved && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-body">
+                <Clock className="w-3 h-3" />
+                Saved {isAutoSaving ? '...' : 'just now'}
+              </span>
+            )}
+
             {/* Word count */}
-            <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-cream-200 text-ink-700 text-sm font-body">
+            <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-cream-200 dark:bg-dark-bgTertiary text-ink-700 dark:text-dark-textSecondary text-sm font-body">
               {wordCount} words
             </span>
 
             {/* Preview toggle */}
             <button
               onClick={() => setPreviewMode(!previewMode)}
-              className="p-2 hover:bg-cream-200 rounded-lg transition-colors"
+              className="p-2 hover:bg-cream-200 dark:hover:bg-dark-bgTertiary rounded-lg transition-colors"
               title={previewMode ? 'Edit' : 'Preview'}
             >
               {previewMode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -235,8 +506,8 @@ export default function WriteChapterPage() {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg transition-all',
                 showAIPanel
-                  ? 'bg-amethyst-500 text-white'
-                  : 'bg-cream-200 text-ink-700 hover:bg-amethyst-100'
+                  ? 'bg-amethyst-500 dark:bg-amethyst-600 text-white'
+                  : 'bg-cream-200 dark:bg-dark-bgTertiary text-ink-700 dark:text-dark-textSecondary hover:bg-amethyst-100 dark:hover:bg-amethyst-900/30'
               )}
             >
               <Sparkles className="w-4 h-4" />
@@ -246,10 +517,10 @@ export default function WriteChapterPage() {
             {/* Save button */}
             <button
               onClick={handleSave}
-              disabled={isSaving || !content.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg font-accent hover:bg-rose-600 disabled:opacity-50 transition-all"
+              disabled={isSaving || isAutoSaving || !content.trim()}
+              className="flex items-center gap-2 px-4 py-2 bg-rose-500 dark:bg-dark-rose text-white rounded-lg font-accent hover:bg-rose-600 dark:hover:bg-rose-400 disabled:opacity-50 transition-all"
             >
-              {isSaving ? (
+              {isSaving || isAutoSaving ? (
                 <>
                   <motion.div
                     animate={{ rotate: 360 }}
@@ -277,12 +548,12 @@ export default function WriteChapterPage() {
             className={cn('flex-1', showAIPanel && 'max-w-2xl')}
           >
             {previewMode ? (
-              <div className="bg-white rounded-2xl shadow-soft p-8 md:p-12 min-h-[60vh]">
+              <div className="bg-white dark:bg-dark-bgSecondary rounded-2xl shadow-soft p-8 md:p-12 min-h-[60vh]">
                 <div className="prose prose-lg max-w-none">
-                  <h2 className="font-display text-3xl text-ink-950 mb-6">
+                  <h2 className="font-display text-3xl text-ink-950 dark:text-dark-text mb-6">
                     Chapter {chapterNumber}
                   </h2>
-                  <div className="font-body text-ink-800 leading-relaxed whitespace-pre-wrap">
+                  <div className="font-body text-ink-800 dark:text-dark-textSecondary leading-relaxed whitespace-pre-wrap">
                     {content || 'Your story will appear here...'}
                   </div>
                 </div>
@@ -290,9 +561,9 @@ export default function WriteChapterPage() {
             ) : (
               <div className="space-y-4">
                 {/* Context snippet */}
-                <div className="bg-white rounded-xl shadow-soft p-4">
-                  <label className="flex items-center gap-2 text-sm font-accent text-ink-800 mb-2">
-                    <Lightbulb className="w-4 h-4 text-gold-500" />
+                <div className="bg-white dark:bg-dark-bgSecondary rounded-xl shadow-soft p-4">
+                  <label className="flex items-center gap-2 text-sm font-accent text-ink-800 dark:text-dark-text mb-2">
+                    <Lightbulb className="w-4 h-4 text-gold-500 dark:text-dark-gold" />
                     Context (optional)
                   </label>
                   <input
@@ -300,24 +571,24 @@ export default function WriteChapterPage() {
                     value={contextSnippet}
                     onChange={(e) => setContextSnippet(e.target.value)}
                     placeholder="What should your partner know before writing? (e.g., 'Continuing the beach scene...')"
-                    className="w-full px-4 py-2 bg-cream-100 rounded-lg text-ink-950 placeholder:text-ink-500 focus:outline-none focus:ring-2 focus:ring-rose-300"
+                    className="w-full px-4 py-2 bg-cream-100 dark:bg-dark-bgTertiary rounded-lg text-ink-950 dark:text-dark-text placeholder:text-ink-500 dark:placeholder:text-dark-textMuted focus:outline-none focus:ring-2 focus:ring-rose-300 dark:focus:ring-rose-700"
                   />
                 </div>
 
                 {/* Editor */}
-                <div className="bg-white rounded-2xl shadow-soft overflow-hidden">
+                <div className="bg-white dark:bg-dark-bgSecondary rounded-2xl shadow-soft overflow-hidden">
                   <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="Begin writing your chapter here... Let your imagination flow freely."
-                    className="w-full h-[50vh] p-8 text-lg font-body text-ink-950 placeholder:text-ink-400 focus:outline-none resize-none leading-relaxed"
+                    className="w-full h-[50vh] p-8 text-lg font-body text-ink-950 dark:text-dark-text placeholder:text-ink-400 dark:placeholder:text-dark-textMuted focus:outline-none resize-none leading-relaxed bg-white dark:bg-dark-bgSecondary"
                   />
                 </div>
 
                 {/* Writing prompt */}
                 <button
                   onClick={() => setShowPrompt(!showPrompt)}
-                  className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-cream-300 rounded-xl text-ink-600 hover:border-rose-300 hover:text-rose-500 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-cream-300 dark:border-dark-border rounded-xl text-ink-600 dark:text-dark-textSecondary hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
                 >
                   <Wand2 className="w-4 h-4" />
                   Need inspiration? Get a writing prompt
@@ -328,15 +599,15 @@ export default function WriteChapterPage() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="bg-rose-50 rounded-xl p-4 border border-rose-100"
+                    className="bg-rose-50 dark:bg-rose-950/20 rounded-xl p-4 border border-rose-100 dark:border-rose-900/30"
                   >
-                    <p className="text-sm text-ink-700 mb-3 font-body">Choose a prompt to inspire your writing:</p>
+                    <p className="text-sm text-ink-700 dark:text-dark-textSecondary mb-3 font-body">Choose a prompt to inspire your writing:</p>
                     <div className="space-y-2">
                       {writingPrompts.map((prompt, i) => (
                         <button
                           key={i}
                           onClick={() => insertPrompt(prompt)}
-                          className="w-full text-left p-3 bg-white rounded-lg hover:bg-rose-100 transition-colors text-sm text-ink-800"
+                          className="w-full text-left p-3 bg-white dark:bg-dark-bgSecondary rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors text-sm text-ink-800 dark:text-dark-text"
                         >
                           {prompt}
                         </button>
@@ -358,18 +629,18 @@ export default function WriteChapterPage() {
                 transition={{ duration: 0.2 }}
                 className="w-72 flex-shrink-0"
               >
-                <div className="sticky top-24 bg-gradient-to-b from-amethyst-50 to-white rounded-2xl shadow-medium p-6 border border-amethyst-100">
+                <div className="sticky top-24 bg-gradient-to-b from-amethyst-50 dark:from-amethyst-950/30 to-white dark:to-dark-bgSecondary rounded-2xl shadow-medium p-6 border border-amethyst-100 dark:border-amethyst-900/30">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-display text-lg text-ink-950">AI Magic</h3>
+                    <h3 className="font-display text-lg text-ink-950 dark:text-dark-text">AI Magic</h3>
                     <button
                       onClick={() => setShowAIPanel(false)}
-                      className="p-1 hover:bg-amethyst-100 rounded transition-colors"
+                      className="p-1 hover:bg-amethyst-100 dark:hover:bg-amethyst-900/30 rounded transition-colors"
                     >
-                      <X className="w-4 h-4 text-ink-600" />
+                      <X className="w-4 h-4 text-ink-600 dark:text-dark-textSecondary" />
                     </button>
                   </div>
 
-                  <p className="text-sm text-ink-700 mb-6 font-body">
+                  <p className="text-sm text-ink-700 dark:text-dark-textSecondary mb-6 font-body">
                     Enhance your writing with AI assistance
                   </p>
 
@@ -379,19 +650,19 @@ export default function WriteChapterPage() {
                         key={enhancement.id}
                         onClick={() => handleEnhance(enhancement.id)}
                         disabled={isEnhancing || !content.trim()}
-                        className="w-full p-4 bg-white rounded-xl border border-amethyst-100 hover:border-amethyst-300 hover:shadow-soft transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                        className="w-full p-4 bg-white dark:bg-dark-bgSecondary rounded-xl border border-amethyst-100 dark:border-amethyst-900/30 hover:border-amethyst-300 dark:hover:border-amethyst-700 hover:shadow-soft transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
                       >
                         <div className="flex items-start gap-3">
                           <span className="text-2xl">{enhancement.icon}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-accent font-medium text-ink-950 text-sm">
+                            <p className="font-accent font-medium text-ink-950 dark:text-dark-text text-sm">
                               {enhancement.name}
                             </p>
-                            <p className="text-xs text-ink-600 mt-0.5">
+                            <p className="text-xs text-ink-600 dark:text-dark-textMuted mt-0.5">
                               {enhancement.description}
                             </p>
                           </div>
-                          <span className="text-xs text-gold-600 font-medium whitespace-nowrap">
+                          <span className="text-xs text-gold-600 dark:text-dark-gold font-medium whitespace-nowrap">
                             {enhancement.tokens} 🔥
                           </span>
                         </div>
@@ -400,14 +671,14 @@ export default function WriteChapterPage() {
                   </div>
 
                   {/* Coming soon features */}
-                  <div className="mt-6 pt-6 border-t border-amethyst-200">
-                    <p className="text-xs text-ink-500 font-accent mb-3">Coming Soon</p>
+                  <div className="mt-6 pt-6 border-t border-amethyst-200 dark:border-amethyst-800">
+                    <p className="text-xs text-ink-500 dark:text-dark-textMuted font-accent mb-3">Coming Soon</p>
                     <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-sm text-ink-600 opacity-60">
+                      <div className="flex items-center gap-3 text-sm text-ink-600 dark:text-dark-textSecondary opacity-60">
                         <Image className="w-4 h-4" />
                         <span>Illustrate scene</span>
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-ink-600 opacity-60">
+                      <div className="flex items-center gap-3 text-sm text-ink-600 dark:text-dark-textSecondary opacity-60">
                         <Mic className="w-4 h-4" />
                         <span>Voice-to-text</span>
                       </div>

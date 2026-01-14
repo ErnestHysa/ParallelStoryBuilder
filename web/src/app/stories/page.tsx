@@ -97,10 +97,10 @@ export default function StoriesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-emerald-100 text-emerald-700';
-      case 'paused': return 'bg-amber-100 text-amber-700';
-      case 'completed': return 'bg-blue-100 text-blue-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'active': return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400';
+      case 'paused': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
+      case 'completed': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400';
     }
   };
 
@@ -130,10 +130,10 @@ export default function StoriesPage() {
           className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
           <div>
-            <h1 className="font-display text-display-md text-ink-950 mb-2">
+            <h1 className="font-display text-display-md text-ink-950 dark:text-dark-text mb-2">
               Your Stories
             </h1>
-            <p className="font-body text-ink-700 text-lg">
+            <p className="font-body text-ink-700 dark:text-dark-textSecondary text-lg">
               Continue writing your love stories together
             </p>
           </div>
@@ -155,7 +155,7 @@ export default function StoriesPage() {
         >
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-600" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-600 dark:text-dark-textMuted" />
             <input
               type="text"
               placeholder="Search your stories..."
@@ -167,7 +167,7 @@ export default function StoriesPage() {
 
           {/* Filter */}
           <div className="relative">
-            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-600" />
+            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-600 dark:text-dark-textMuted" />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as any)}
@@ -190,7 +190,7 @@ export default function StoriesPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.1 }}
-                className="aspect-[3/4] rounded-2xl bg-cream-200 animate-pulse"
+                className="aspect-[3/4] rounded-2xl bg-cream-200 dark:bg-dark-bgTertiary animate-pulse"
               />
             ))}
           </div>
@@ -200,20 +200,20 @@ export default function StoriesPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="text-center py-16"
           >
-            <div className="w-20 h-20 rounded-full bg-cream-200 flex items-center justify-center mx-auto mb-6">
-              <BookOpen className="w-10 h-10 text-ink-400" />
+            <div className="w-20 h-20 rounded-full bg-cream-200 dark:bg-dark-bgTertiary flex items-center justify-center mx-auto mb-6">
+              <BookOpen className="w-10 h-10 text-ink-400 dark:text-dark-textMuted" />
             </div>
-            <h3 className="font-display text-2xl text-ink-950 mb-2">
+            <h3 className="font-display text-2xl text-ink-950 dark:text-dark-text mb-2">
               {searchQuery || filterStatus !== 'all' ? 'No stories found' : 'No stories yet'}
             </h3>
-            <p className="font-body text-ink-700 mb-6">
+            <p className="font-body text-ink-700 dark:text-dark-textSecondary mb-6">
               {searchQuery || filterStatus !== 'all'
                 ? 'Try a different search or filter'
                 : 'Every great love story starts with a single word'}
             </p>
             <Link
               href="/stories/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-full font-accent hover:bg-rose-600 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 dark:bg-dark-rose text-white rounded-full font-accent hover:bg-rose-600 dark:hover:bg-rose-400 transition-colors"
             >
               <Plus className="w-5 h-5" />
               Create Your First Story

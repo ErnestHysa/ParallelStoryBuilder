@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -43,8 +44,14 @@ export function AppNav() {
   }, []);
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
+    try {
+      await signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+      // Still navigate even if sign out had an error
+      router.push('/');
+    }
   };
 
   return (
@@ -54,7 +61,7 @@ export function AppNav() {
         className={cn(
           'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
           scrolled
-            ? 'bg-cream-100/95 backdrop-blur-md shadow-sm border-b border-cream-200'
+            ? 'bg-cream-100/95 dark:bg-dark-bgSecondary/95 backdrop-blur-md shadow-sm border-b border-cream-200 dark:border-dark-border'
             : 'bg-transparent'
         )}
       >
@@ -85,8 +92,8 @@ export function AppNav() {
                     className={cn(
                       'relative px-4 py-2 rounded-lg font-body text-sm transition-all duration-200',
                       isActive
-                        ? 'text-rose-500 bg-rose-50'
-                        : 'text-ink-700 hover:text-ink-950 hover:bg-cream-200'
+                        ? 'text-rose-500 dark:text-dark-rose bg-rose-50 dark:bg-rose-950/30'
+                        : 'text-ink-700 dark:text-dark-textSecondary hover:text-ink-950 dark:hover:text-dark-text hover:bg-cream-200 dark:hover:bg-dark-bgTertiary'
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -96,7 +103,7 @@ export function AppNav() {
                     {isActive && (
                       <motion.div
                         layoutId="activeNav"
-                        className="absolute inset-0 bg-rose-50 rounded-lg -z-10"
+                        className="absolute inset-0 bg-rose-50 dark:bg-rose-950/30 rounded-lg -z-10"
                         transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                       />
                     )}
@@ -107,15 +114,16 @@ export function AppNav() {
 
             {/* User Menu */}
             <div className="hidden md:flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-cream-200 border border-cream-300">
-                <Heart className="w-4 h-4 text-rose-500" />
-                <span className="text-sm font-accent text-ink-800">
+              <ThemeToggle />
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-cream-200 dark:bg-dark-bgTertiary border border-cream-300 dark:border-dark-border">
+                <Heart className="w-4 h-4 text-rose-500 dark:text-dark-rose" />
+                <span className="text-sm font-accent text-ink-800 dark:text-dark-text">
                   {profile?.display_name || user?.email?.split('@')[0]}
                 </span>
               </div>
               <button
                 onClick={handleSignOut}
-                className="p-2 text-ink-700 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                className="p-2 text-ink-700 dark:text-dark-textSecondary hover:text-rose-500 dark:hover:text-dark-rose hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
                 aria-label="Sign out"
               >
                 <LogOut className="w-5 h-5" />
@@ -125,7 +133,7 @@ export function AppNav() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-ink-950 hover:bg-cream-200 rounded-lg transition-colors"
+              className="md:hidden p-2 text-ink-950 dark:text-dark-text hover:bg-cream-200 dark:hover:bg-dark-bgTertiary rounded-lg transition-colors"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -143,40 +151,44 @@ export function AppNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-ink-950/20 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-ink-950/20 dark:bg-black/40 backdrop-blur-sm z-40 md:hidden"
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-              className="fixed top-0 right-0 bottom-0 w-72 bg-white shadow-elegant z-50 md:hidden flex flex-col"
+              className="fixed top-0 right-0 bottom-0 w-72 bg-white dark:bg-dark-bgSecondary shadow-elegant z-50 md:hidden flex flex-col"
             >
               {/* Mobile Header */}
-              <div className="h-16 flex items-center justify-between px-6 border-b border-cream-200">
-                <span className="font-display text-lg text-ink-950">Menu</span>
+              <div className="h-16 flex items-center justify-between px-6 border-b border-cream-200 dark:border-dark-border">
+                <span className="font-display text-lg text-ink-950 dark:text-dark-text">Menu</span>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 hover:bg-cream-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-cream-100 dark:hover:bg-dark-bgTertiary rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5 text-ink-700 dark:text-dark-textSecondary" />
                 </button>
               </div>
 
               {/* Mobile Nav Items */}
               <div className="flex-1 overflow-y-auto py-4">
                 <div className="px-4 mb-4">
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-rose-50 border border-rose-100">
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-dark-border">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-amethyst-600 flex items-center justify-center">
                       <Heart className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-accent font-semibold text-ink-950 truncate">
+                      <p className="font-accent font-semibold text-ink-950 dark:text-dark-text truncate">
                         {profile?.display_name || user?.email?.split('@')[0]}
                       </p>
-                      <p className="text-xs text-ink-600 truncate">{user?.email}</p>
+                      <p className="text-xs text-ink-600 dark:text-dark-textMuted truncate">{user?.email}</p>
                     </div>
                   </div>
+                </div>
+
+                <div className="px-4 mb-4">
+                  <ThemeToggle />
                 </div>
 
                 <nav className="space-y-1 px-4">
@@ -192,8 +204,8 @@ export function AppNav() {
                         className={cn(
                           'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                           isActive
-                            ? 'bg-rose-500 text-white'
-                            : 'text-ink-700 hover:bg-cream-100'
+                            ? 'bg-rose-500 dark:bg-dark-rose text-white'
+                            : 'text-ink-700 dark:text-dark-textSecondary hover:bg-cream-100 dark:hover:bg-dark-bgTertiary'
                         )}
                       >
                         <Icon className="w-5 h-5" />
@@ -205,10 +217,10 @@ export function AppNav() {
               </div>
 
               {/* Mobile Footer */}
-              <div className="p-4 border-t border-cream-200">
+              <div className="p-4 border-t border-cream-200 dark:border-dark-border">
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-ink-700 hover:bg-cream-100 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-ink-700 dark:text-dark-textSecondary hover:bg-cream-100 dark:hover:bg-dark-bgTertiary transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
                   <span className="font-body font-medium">Sign Out</span>
