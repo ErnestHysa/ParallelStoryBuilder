@@ -8,6 +8,8 @@ import {
   Alert,
   Animated,
   ActivityIndicator,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
@@ -15,6 +17,7 @@ import { useDemoStore } from '@/stores/demoStore';
 import { useTokenStore } from '@/stores/tokenStore';
 import { useGamificationStore } from '@/stores/gamificationStore';
 import { useOfflineStore } from '@/stores/offlineStore';
+import { useRelationshipStore } from '@/stores/relationshipStore';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -22,6 +25,7 @@ import StreakDisplay from '@/components/StreakDisplay';
 import AchievementBadge from '@/components/AchievementBadge';
 import { ProgressRing } from '@/components/ProgressRing';
 import { Theme } from '@/lib/types';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const THEME_INFO: Record<Theme, { label: string; emoji: string; color: string }> = {
   romance: { label: 'Romance', emoji: '💕', color: '#E91E63' },
@@ -47,8 +51,10 @@ export default function HomeScreen() {
   const { balance } = useTokenStore();
   const { streak, achievements } = useGamificationStore();
   const { isConnected: isOnline } = useOfflineStore();
+  const { dailyIntention, setDailyIntention, completeDailyIntention, fetchDailyIntention, relationshipStats } = useRelationshipStore();
   const [loading, setLoading] = React.useState(true);
-  const [dailyCheckIn, setDailyCheckIn] = useState(false);
+  const [showIntentionModal, setShowIntentionModal] = useState(false);
+  const [intentionText, setIntentionText] = useState('');
   const [showAchievements, setShowAchievements] = useState(false);
   const [pulseAnim] = useState(new Animated.Value(1));
 
@@ -56,6 +62,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     initialize().finally(() => setLoading(false));
+    fetchDailyIntention();
 
     // Pulse animation for achievements
     if (achievements.length > 0) {
@@ -74,11 +81,59 @@ export default function HomeScreen() {
         ])
       ).start();
     }
-  }, [initialize, achievements, pulseAnim]);
+  }, [initialize, achievements, pulseAnim, fetchDailyIntention]);
 
-  const handleDailyCheckIn = async () => {
-    // Placeholder for daily check-in
-    setDailyCheckIn(true);
+  const handleSetIntention = async () => {
+    if (!intentionText.trim()) {
+      Alert.alert('Error', 'Please enter an intention');
+      return;
+    }
+
+    try {
+      await setDailyIntention(intentionText);
+      setShowIntentionModal(false);
+      setIntentionText('');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to set intention');
+    }
+  };
+
+  const handleCompleteIntention = async () => {
+    try {
+      await completeDailyIntention();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to complete intention');
+    }
+  };
+
+  const getStreakCount = () => {
+    if (typeof streak === 'object') {
+      return streak.current || streak;
+    }
+    return streak;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStreakColor = (streakCount: number) => {
+    if (streakCount >= 30) return '#FF6B6B';
+    if (streakCount >= 14) return '#FFA94D';
+    if (streakCount >= 7) return '#4CAF50';
+    return '#2196F3';
+  };
+
+  const getStreakLabel = (streakCount: number) => {
+    if (streakCount >= 30) return '🔥 On Fire!';
+    if (streakCount >= 14) return '⭐ Amazing!';
+    if (streakCount >= 7) return '💪 Keep it up!';
+    if (streakCount > 0) return '🌱 Growing';
+    return 'Start your streak';
   };
 
   const handleDeleteStory = (id: string, title: string) => {
@@ -108,22 +163,84 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Daily Check-in Banner */}
-      {!dailyCheckIn && (
-        <Card variant="elevated" style={styles.checkInCard}>
-          <View style={styles.checkInContent}>
-            <Text style={styles.checkInTitle}>Daily Check-in</Text>
-            <Text style={styles.checkInSubtitle}>Set your writing intention for today!</Text>
-            <Button
-              onPress={handleDailyCheckIn}
-              disabled={!isOnline}
-              style={styles.checkInButton}
-            >
-              {isOnline ? 'Set Intention' : 'Offline'}
-            </Button>
-          </View>
-        </Card>
-      )}
+      {/* Daily Intention Card */}
+      <ScrollView style={styles.topScroll} contentContainerStyle={styles.topScrollContent}>
+        {!dailyIntention && (
+          <Card variant="elevated" style={styles.checkInCard}>
+            <View style={styles.checkInContent}>
+              <View style={styles.checkInHeader}>
+                <MaterialIcons name="wb-sunny" size={28} color={COLORS.primary} />
+                <Text style={styles.checkInTitle}>Daily Intention</Text>
+              </View>
+              <Text style={styles.checkInSubtitle}>What do you want to create together today?</Text>
+              <Button
+                onPress={() => setShowIntentionModal(true)}
+                disabled={!isOnline}
+                style={styles.checkInButton}
+              >
+                {isOnline ? 'Set Intention' : 'Offline'}
+              </Button>
+            </View>
+          </Card>
+        )}
+
+        {dailyIntention && (
+          <Card variant="elevated" style={styles.intentionCard}>
+            <View style={styles.intentionHeader}>
+              <View style={styles.streakContainer}>
+                <View style={[
+                  styles.streakIndicator,
+                  { backgroundColor: getStreakColor(getStreakCount()) }
+                ]}>
+                  <MaterialIcons name="local-fire-department" size={20} color="#fff" />
+                </View>
+                <View style={styles.streakInfo}>
+                  <Text style={styles.streakCount}>{getStreakCount()}</Text>
+                  <Text style={styles.streakLabel}>{getStreakLabel(getStreakCount())}</Text>
+                </View>
+              </View>
+              <Text style={styles.date}>
+                {dailyIntention.created_at ? formatDate(dailyIntention.created_at) : 'Today'}
+              </Text>
+            </View>
+
+            <View style={styles.intentionSection}>
+              <View style={styles.intentionLabelContainer}>
+                <MaterialIcons name="favorite" size={16} color={COLORS.primary} />
+                <Text style={styles.intentionLabel}>My Intention</Text>
+              </View>
+              <Text style={styles.intentionText}>{dailyIntention.intention}</Text>
+            </View>
+
+            {!dailyIntention.completed && (
+              <TouchableOpacity
+                style={styles.completeButton}
+                onPress={handleCompleteIntention}
+              >
+                <MaterialIcons name="check" size={20} color="#fff" />
+                <Text style={styles.completeButtonText}>Mark Complete</Text>
+              </TouchableOpacity>
+            )}
+
+            {dailyIntention.completed && (
+              <View style={styles.completedButton}>
+                <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
+                <Text style={styles.completedButtonText}>Completed!</Text>
+              </View>
+            )}
+
+            {dailyIntention.partner_intention && (
+              <View style={styles.partnerSection}>
+                <View style={styles.partnerLabelContainer}>
+                  <MaterialIcons name="favorite" size={16} color="#2196F3" />
+                  <Text style={styles.partnerLabel}>Partner's Intention</Text>
+                </View>
+                <Text style={styles.partnerText}>{dailyIntention.partner_intention}</Text>
+              </View>
+            )}
+          </Card>
+        )}
+      </ScrollView>
 
       {/* Stats Overview */}
       <View style={styles.statsContainer}>
@@ -273,6 +390,55 @@ export default function HomeScreen() {
           </Card>
         )}
       </ScrollView>
+
+      {/* Daily Intention Modal */}
+      <Modal
+        visible={showIntentionModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowIntentionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <MaterialIcons name="wb-sunny" size={28} color={COLORS.primary} />
+              <Text style={styles.modalTitle}>Set Your Daily Intention</Text>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              What do you want to create or share with your partner today?
+            </Text>
+            <TextInput
+              style={styles.intentionInput}
+              placeholder="e.g., Write a chapter about our first date..."
+              placeholderTextColor="#999"
+              value={intentionText}
+              onChangeText={setIntentionText}
+              multiline
+              maxLength={200}
+            />
+            <View style={styles.modalActions}>
+              <Button
+                variant="ghost"
+                onPress={() => {
+                  setShowIntentionModal(false);
+                  setIntentionText('');
+                }}
+                style={styles.modalButton}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onPress={handleSetIntention}
+                disabled={!intentionText.trim()}
+                style={styles.modalButton}
+              >
+                Set Intention
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -496,5 +662,181 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 8,
+  },
+  // Daily Intention Styles
+  topScroll: {
+    maxHeight: 280,
+  },
+  topScrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  checkInHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  intentionCard: {
+    marginBottom: 16,
+  },
+  intentionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  streakIndicator: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  streakInfo: {
+    gap: 2,
+  },
+  streakCount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  streakLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  date: {
+    fontSize: 14,
+    color: '#666',
+  },
+  intentionSection: {
+    marginBottom: 16,
+  },
+  intentionLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  intentionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  intentionText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#333',
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 8,
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  completeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  completedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  completedButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4CAF50',
+    marginLeft: 8,
+  },
+  partnerSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  partnerLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  partnerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2196F3',
+  },
+  partnerText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#333',
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+  },
+  intentionInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
