@@ -141,7 +141,10 @@ function stripHtmlTags(html: string): string {
 }
 
 // Quote extraction
-export function extractQuote(chapter: Chapter): string {
+export function extractQuote(chapter: Chapter | undefined): string {
+  if (!chapter) {
+    return 'Start writing your story together...';
+  }
   const content = chapter.ai_enhanced_content || chapter.content;
   // Strip HTML tags before processing
   const plainText = stripHtmlTags(content);
@@ -160,7 +163,10 @@ export function extractQuote(chapter: Chapter): string {
 }
 
 // Get multiple quotes from a chapter for browsing/shuffling
-export function extractMultipleQuotes(chapter: Chapter, count: number = 3): string[] {
+export function extractMultipleQuotes(chapter: Chapter | undefined, count: number = 3): string[] {
+  if (!chapter) {
+    return ['Start writing your story together...'];
+  }
   const content = chapter.ai_enhanced_content || chapter.content;
   const plainText = stripHtmlTags(content);
   const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 15 && s.trim().length < 150);
@@ -223,7 +229,7 @@ export function smartTrim(text: string, maxLength: number = 300): string {
 }
 
 // Shuffle to get a different quote from the same chapter
-export function shuffleQuote(chapter: Chapter, previousQuote?: string): string {
+export function shuffleQuote(chapter: Chapter | undefined, previousQuote?: string): string {
   const quotes = extractMultipleQuotes(chapter, 5);
   const availableQuotes = previousQuote
     ? quotes.filter(q => q !== previousQuote)

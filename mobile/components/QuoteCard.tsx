@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import { Svg, Rect, Defs, LinearGradient, G, Text as SvgText, TSpan } from 'react-native-svg';
+import { Svg, Rect, Defs, LinearGradient, G, Text as SvgText, TSpan, Circle } from 'react-native-svg';
 import { QuoteCardConfig, getGradientColors, getPalette, CARD_DIMENSIONS } from '../lib/cardGenerator';
 import { Theme } from '../lib/types';
 
@@ -10,6 +10,7 @@ interface QuoteCardProps {
   aspectRatio?: 'story' | 'square' | 'portrait';
   width?: number;
   height?: number;
+  partnerName?: string | null;
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -20,6 +21,7 @@ export function QuoteCard({
   aspectRatio = 'story',
   width,
   height,
+  partnerName,
 }: QuoteCardProps) {
   const palette = getPalette(theme);
   const dimensions = width && height ? { width, height } : CARD_DIMENSIONS[aspectRatio];
@@ -61,18 +63,38 @@ export function QuoteCard({
           </LinearGradient>
           <LinearGradient id="overlayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="rgba(0,0,0,0)" />
-            <stop offset="100%" stopColor="rgba(0,0,0,0.15)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.2)" />
           </LinearGradient>
         </Defs>
 
         {/* Background with gradient */}
         <Rect width={dimensions.width} height={dimensions.height} fill="url(#grad)" />
 
+        {/* Decorative circles for visual interest */}
+        <Circle
+          cx={-dimensions.width * 0.05}
+          cy={dimensions.width * 0.05}
+          r={dimensions.width * 0.2}
+          fill="rgba(255,255,255,0.05)"
+        />
+        <Circle
+          cx={dimensions.width + dimensions.width * 0.03}
+          cy={dimensions.height * 0.55}
+          r={dimensions.width * 0.15}
+          fill="rgba(255,255,255,0.03)"
+        />
+        <Circle
+          cx={dimensions.width * 0.8}
+          cy={dimensions.height * 0.15}
+          r={dimensions.width * 0.1}
+          fill="rgba(255,255,255,0.04)"
+        />
+
         {/* Overlay gradient for depth */}
         <Rect width={dimensions.width} height={dimensions.height} fill="url(#overlayGrad)" />
 
         {/* Decorative quote mark - top left */}
-        <G opacity={0.15}>
+        <G opacity={0.2}>
           <SvgText
             x={padding}
             y={topMargin}
@@ -105,7 +127,7 @@ export function QuoteCard({
         </G>
 
         {/* Decorative quote mark - bottom right */}
-        <G opacity={0.15}>
+        <G opacity={0.2}>
           <SvgText
             x={dimensions.width - padding - quoteSize * 0.5}
             y={dimensions.height * 0.75}
@@ -118,13 +140,22 @@ export function QuoteCard({
           </SvgText>
         </G>
 
+        {/* Decorative line */}
+        <Rect
+          x={dimensions.width * 0.425}
+          y={dimensions.height * 0.78}
+          width={dimensions.width * 0.15}
+          height={1}
+          fill="rgba(255,255,255,0.3)"
+        />
+
         {/* Chapter indicator */}
         {config.chapter && (
           <SvgText
             x={dimensions.width / 2}
-            y={dimensions.height * 0.82}
+            y={dimensions.height * 0.815}
             fontSize={dimensions.width * 0.032}
-            fill="rgba(255,255,255,0.8)"
+            fill="rgba(255,255,255,0.9)"
             textAnchor="middle"
             fontFamily="System"
             fontWeight="500"
@@ -134,18 +165,50 @@ export function QuoteCard({
           </SvgText>
         )}
 
-        {/* Story title */}
-        <SvgText
-          x={dimensions.width / 2}
-          y={dimensions.height * 0.88}
-          fontSize={dimensions.width * 0.028}
-          fill="rgba(255,255,255,0.7)"
-          textAnchor="middle"
-          fontFamily="System"
-          fontWeight="400"
-        >
-          {config.author || 'Our Story'}
-        </SvgText>
+        {/* Story title with partner name */}
+        {partnerName ? (
+          <G>
+            {/* Main title */}
+            <SvgText
+              x={dimensions.width / 2}
+              y={dimensions.height * 0.82}
+              fontSize={dimensions.width * 0.028}
+              fill="rgba(255,255,255,0.8)"
+              textAnchor="middle"
+              fontFamily="System"
+              fontWeight="400"
+            >
+              {config.author || 'Our Story'}
+            </SvgText>
+            {/* Partner line */}
+            <SvgText
+              x={dimensions.width / 2}
+              y={dimensions.height * 0.855}
+              fontSize={dimensions.width * 0.032}
+              fill="rgba(255,255,255,0.9)"
+              textAnchor="middle"
+              fontFamily="System"
+              fontWeight="500"
+            >
+              with{' '}
+              <TSpan fontFamily="System" fontWeight="600" fill="#FFFFFF">
+                {partnerName}
+              </TSpan>
+            </SvgText>
+          </G>
+        ) : (
+          <SvgText
+            x={dimensions.width / 2}
+            y={dimensions.height * 0.84}
+            fontSize={dimensions.width * 0.028}
+            fill="rgba(255,255,255,0.8)"
+            textAnchor="middle"
+            fontFamily="System"
+            fontWeight="400"
+          >
+            {config.author || 'Our Story'}
+          </SvgText>
+        )}
 
         {/* Branding footer */}
         {config.showBranding && (

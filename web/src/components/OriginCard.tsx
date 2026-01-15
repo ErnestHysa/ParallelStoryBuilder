@@ -139,32 +139,7 @@ export function OriginCard({
         {config.author || 'Our Story'}
       </div>
 
-      {/* Pairing code - join instructions */}
-      {pairingCode && (
-        <div
-          className="absolute left-0 right-0 text-center"
-          style={{
-            bottom: config.showBranding ? previewHeight * 0.09 : previewHeight * 0.06,
-          }}
-        >
-          <div
-            className="inline-block bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2"
-          >
-            <div
-              className="text-white/80 text-xs font-medium tracking-wider mb-1"
-              style={{ fontSize: previewWidth * 0.02 }}
-            >
-              JOIN OUR STORY
-            </div>
-            <div
-              className="text-white font-bold tracking-widest"
-              style={{ fontSize: previewWidth * 0.04 }}
-            >
-              {pairingCode}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Pairing code - join instructions - removed for social media sharing */}
 
       {/* Branding footer */}
       {config.showBranding && (

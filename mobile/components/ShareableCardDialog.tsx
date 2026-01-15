@@ -32,6 +32,14 @@ import { shareCard, ShareResult, CardGenerationState } from '../lib/cardRenderer
 import { getRecommendedPlatforms, createShareMessage } from '../lib/socialShare';
 import { Story, Chapter } from '../lib/types';
 
+interface StoryMember {
+  user_id: string;
+  profile?: {
+    display_name: string | null;
+    email: string | null;
+  };
+}
+
 const { width: screenWidth } = Dimensions.get('window');
 const scale = PixelRatio.get();
 
@@ -40,6 +48,8 @@ interface ShareableCardDialogProps {
   onClose: () => void;
   story: Story;
   chapters: Chapter[];
+  members?: StoryMember[];
+  currentUserId?: string;
 }
 
 type GenerationStage = 'idle' | 'preview' | 'generating' | 'sharing';
@@ -49,6 +59,8 @@ export function ShareableCardDialog({
   onClose,
   story,
   chapters,
+  members = [],
+  currentUserId,
 }: ShareableCardDialogProps) {
   const [selectedStyle, setSelectedStyle] = useState<CardStyle>('quote');
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<CardAspectRatio>('story');
@@ -73,6 +85,15 @@ export function ShareableCardDialog({
   // Get current card data
   const currentCard: CardData = cardSuggestions[selectedSuggestion] ||
     generateCardData(story, chapters, selectedStyle, selectedAspectRatio);
+
+  // Get partner name for display on cards
+  const partnerName = React.useMemo(() => {
+    if (!members || members.length === 0) return null;
+    const creatorId = story.created_by || currentUserId;
+    const partner = members.find(m => m.user_id !== creatorId);
+    if (!partner) return null;
+    return partner.profile?.display_name || partner.profile?.email || null;
+  }, [members, story.created_by, currentUserId]);
 
   // Recommended platforms for selected aspect ratio
   const recommendedPlatforms = getRecommendedPlatforms(selectedAspectRatio);
@@ -174,6 +195,7 @@ export function ShareableCardDialog({
               aspectRatio={selectedAspectRatio}
               width={previewMode ? undefined : cardWidth * scale}
               height={previewMode ? undefined : cardHeight * scale}
+              partnerName={partnerName}
             />
           )}
           {cardStyle === 'milestone' && (
