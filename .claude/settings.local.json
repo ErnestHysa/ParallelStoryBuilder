@@ -54,7 +54,8 @@
       "Bash(npm run lint:*)",
       "Bash(netstat:*)",
       "Bash(curl:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(xargs:*)"
     ]
   }
 }
