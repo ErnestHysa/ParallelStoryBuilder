@@ -27,6 +27,7 @@ import StreakDisplay from '@/components/StreakDisplay';
 import MediaGallery from '@/components/MediaGallery';
 import { AICoverArtGenerator } from '@/components/AICoverArtGenerator';
 import { ExportDialog } from '@/components/ExportDialog';
+import { ShareableCardDialog } from '@/components/ShareableCardDialog';
 import { Theme } from '@/lib/types';
 
 const ACTIONS_ROW_HEIGHT = 80;
@@ -78,6 +79,7 @@ export default function StoryDetailScreen() {
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [error, setError] = useState<string>('');
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showShareCardDialog, setShowShareCardDialog] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [showAICoverArt, setShowAICoverArt] = useState(false);
   const [presence, setPresence] = useState(PRESENCE_STATES.offline);
@@ -325,13 +327,22 @@ export default function StoryDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Chapters ({displayChapters.length})</Text>
-            <Button
-              variant="ghost"
-              size="sm"
-              onPress={handleExportStory}
-            >
-              📥 Export
-            </Button>
+            <View style={styles.sectionActions}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => setShowShareCardDialog(true)}
+              >
+                📤 Share Card
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={handleExportStory}
+              >
+                📥 Export
+              </Button>
+            </View>
           </View>
 
           {isLoadingChapters ? (
@@ -504,6 +515,13 @@ export default function StoryDetailScreen() {
         story={displayStory}
         chapters={displayChapters}
         inspirations={[]}
+      />
+
+      <ShareableCardDialog
+        visible={showShareCardDialog}
+        onClose={() => setShowShareCardDialog(false)}
+        story={displayStory}
+        chapters={displayChapters}
       />
     </View>
   );
@@ -702,6 +720,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  sectionActions: {
+    flexDirection: 'row',
+    gap: 4,
   },
   sectionTitle: {
     fontSize: 20,

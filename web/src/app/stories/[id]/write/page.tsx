@@ -18,7 +18,9 @@ import {
 } from 'lucide-react';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { useEditorStore } from '@/stores/editorStore';
 import type { Story, Chapter } from '@/types';
+import type { EnhancementType } from '@/lib/aiClient';
 import { cn } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
 import RichTextEditor from '@/components/RichTextEditor';
@@ -45,6 +47,7 @@ export default function WriteChapterPage() {
   const params = useParams();
   const router = useRouter();
   const { profile, isLoading: isLoadingAuth } = useAuthStore();
+  const editorStore = useEditorStore();
   const storyId = params.id as string;
 
   const [story, setStory] = useState<Story | null>(null);
@@ -59,6 +62,7 @@ export default function WriteChapterPage() {
   const [previewMode, setPreviewMode] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [enhancedContent, setEnhancedContent] = useState<string | null>(null);
 
   // Use ref to track last saved content for auto-save comparison
   const lastSavedContentRef = useRef('');
@@ -408,28 +412,48 @@ export default function WriteChapterPage() {
     }
   };
 
-  const handleEnhance = async (type: string) => {
+  const handleEnhance = async (type: EnhancementType) => {
+    if (!content.trim()) {
+      toast.error('Please write something first');
+      return;
+    }
+
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured()) {
+      toast.error('AI features require Supabase configuration. Please set up your .env file.');
+      return;
+    }
+
     setIsEnhancing(true);
 
     try {
-      // Simulate AI enhancement (in production, this would call your AI endpoint)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Dynamic import to avoid SSR issues
+      const { aiClient } = await import('@/lib/aiClient');
 
-      // Mock enhancement - in production, this would return actual AI-enhanced content
-      const enhancements: Record<string, string> = {
-        sensory: 'The golden sunlight filtered through the leaves, casting dancing shadows on her face. The scent of jasmine filled the air, sweet and intoxicating.',
-        dialogue: '"I never thought I\'d feel this way," she whispered, her voice barely audible over the rustling leaves.',
-        emotional: 'Her heart raced as she realized the truth - this wasn\'t just a fleeting moment, but the beginning of something real.',
-        creative: 'And in that instant, the world seemed to pause, as if time itself held its breath to witness this moment.',
-      };
+      toast.loading('Enhancing your content...', { id: 'enhance-loading' });
 
-      const enhancement = enhancements[type] || '';
-      setContent(content + '\n\n' + enhancement);
-      toast.success('Content enhanced!');
+      const enhanced = await aiClient.enhanceContent(content, type, storyId);
+
+      toast.dismiss('enhance-loading');
+      toast.success('Content enhanced with AI!');
+
+      // Set the enhanced content
+      setEnhancedContent(enhanced);
     } catch (error) {
-      toast.error('Failed to enhance content');
+      toast.dismiss('enhance-loading');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to enhance content';
+      console.error('AI enhancement error:', error);
+      toast.error(errorMessage);
     } finally {
       setIsEnhancing(false);
+    }
+  };
+
+  const applyEnhancedContent = () => {
+    if (enhancedContent) {
+      setContent(enhancedContent);
+      setEnhancedContent(null);
+      toast.success('Applied enhanced version!');
     }
   };
 
@@ -614,6 +638,48 @@ export default function WriteChapterPage() {
                     </div>
                   </motion.div>
                 )}
+
+                {/* Enhanced Content Preview */}
+                {enhancedContent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-amethyst-50 to-rose-50 dark:from-amethyst-950/30 dark:to-rose-950/30 rounded-xl p-5 border border-amethyst-200 dark:border-amethyst-800"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-amethyst-600 dark:text-amethyst-400" />
+                        <h4 className="font-accent font-semibold text-ink-950 dark:text-dark-text">AI Enhanced Version</h4>
+                      </div>
+                      <button
+                        onClick={() => setEnhancedContent(null)}
+                        className="p-1 hover:bg-amethyst-100 dark:hover:bg-amethyst-900/30 rounded transition-colors"
+                      >
+                        <X className="w-4 h-4 text-ink-600 dark:text-dark-textSecondary" />
+                      </button>
+                    </div>
+                    <div className="bg-white dark:bg-dark-bgSecondary rounded-lg p-4 mb-3 max-h-60 overflow-y-auto">
+                      <p className="font-body text-sm text-ink-800 dark:text-dark-textSecondary whitespace-pre-wrap">
+                        {enhancedContent}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={applyEnhancedContent}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amethyst-600 dark:bg-amethyst-500 text-white rounded-lg font-accent text-sm hover:bg-amethyst-700 dark:hover:bg-amethyst-600 transition-colors"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Use Enhanced Version
+                      </button>
+                      <button
+                        onClick={() => setEnhancedContent(null)}
+                        className="px-4 py-2 bg-ink-100 dark:bg-dark-bgTertiary text-ink-700 dark:text-dark-textSecondary rounded-lg font-accent text-sm hover:bg-ink-200 dark:hover:bg-dark-bgTertiary transition-colors"
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             )}
           </motion.div>
@@ -647,7 +713,7 @@ export default function WriteChapterPage() {
                     {aiEnhancements.map((enhancement) => (
                       <button
                         key={enhancement.id}
-                        onClick={() => handleEnhance(enhancement.id)}
+                        onClick={() => handleEnhance(enhancement.id as EnhancementType)}
                         disabled={isEnhancing || !content.trim()}
                         className="w-full p-4 bg-white dark:bg-dark-bgSecondary rounded-xl border border-amethyst-100 dark:border-amethyst-900/30 hover:border-amethyst-300 dark:hover:border-amethyst-700 hover:shadow-soft transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left"
                       >
@@ -661,9 +727,17 @@ export default function WriteChapterPage() {
                               {enhancement.description}
                             </p>
                           </div>
-                          <span className="text-xs text-gold-600 dark:text-dark-gold font-medium whitespace-nowrap">
-                            {enhancement.tokens} 🔥
-                          </span>
+                          {isEnhancing ? (
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                              className="w-4 h-4 border-2 border-amethyst-300 border-t-amethyst-600 rounded-full"
+                            />
+                          ) : (
+                            <span className="text-xs text-gold-600 dark:text-dark-gold font-medium whitespace-nowrap">
+                              {enhancement.tokens} 🔥
+                            </span>
+                          )}
                         </div>
                       </button>
                     ))}

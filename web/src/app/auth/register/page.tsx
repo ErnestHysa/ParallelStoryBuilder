@@ -88,7 +88,7 @@ export default function RegisterPage() {
       // No manual insert needed
 
       toast.success('Welcome to Parallel! Check your email to verify your account.');
-      router.push('/stories');
+      router.push('/blueprint');
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account');
     } finally {

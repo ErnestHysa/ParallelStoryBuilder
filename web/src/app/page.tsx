@@ -352,25 +352,33 @@ export default function LandingPage() {
       <section className="py-24 px-6 bg-gradient-to-br from-rose-500 via-rose-600 to-amethyst-600 relative overflow-hidden">
         {/* Animated particles */}
         <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 bg-white/20 rounded-full"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -100, 0],
-                opacity: [0.2, 0.5, 0.2],
-              }}
-              transition={{
-                duration: 5 + Math.random() * 5,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-            />
-          ))}
+          {[...Array(20)].map((_, i) => {
+            // Deterministic pseudo-random based on index to avoid hydration mismatch
+            const seed = (i * 9301 + 49297) % 233280
+            const random = seed / 233280
+            const duration = 5 + (random * 5)
+            const delay = (random * 2) % 2
+
+            return (
+              <motion.div
+                key={i}
+                className="absolute w-2 h-2 bg-white/20 rounded-full"
+                style={{
+                  left: `${(i * 47) % 100}%`,
+                  top: `${(i * 73) % 100}%`,
+                }}
+                animate={{
+                  y: [0, -100, 0],
+                  opacity: [0.2, 0.5, 0.2],
+                }}
+                transition={{
+                  duration,
+                  repeat: Infinity,
+                  delay,
+                }}
+              />
+            )
+          })}
         </div>
 
         <div className="max-w-3xl mx-auto text-center relative">

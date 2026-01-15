@@ -56,3 +56,17 @@ export { BiometricLockComponent, withBiometricLock, useBiometricAuth, default as
 
 // i18n
 export { LanguagePicker, useLanguageSelector } from './LanguageSelector';
+
+// Onboarding
+export { BlueprintQuiz, default as RelationshipBlueprint } from './BlueprintQuiz';
+export { BlueprintResults, default as RelationshipBlueprintResults } from './BlueprintResults';
+
+// Notifications
+export { NotificationSettings } from './NotificationSettings';
+export { NotificationPermissionPrompt } from './NotificationPermissionPrompt';
+
+// Social Sharing Cards
+export { QuoteCard } from './QuoteCard';
+export { MilestoneCard } from './MilestoneCard';
+export { IllustratedCard } from './IllustratedCard';
+export { ShareableCardDialog, default as ShareableCardDialogModal } from './ShareableCardDialog';

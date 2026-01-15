@@ -17,11 +17,13 @@ import {
   ChevronDown,
   Copy,
   Check,
+  Download,
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { StoryWithMembers, Chapter, StoryMember, Profile } from '@/types';
 import { formatDate, cn } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
+import { ShareableCardDialog } from '@/components/ShareableCardDialog';
 
 const themeColors: Record<string, string> = {
   romance: 'from-rose-400 to-rose-600',
@@ -44,6 +46,7 @@ export default function StoryDetailPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPairingCode, setShowPairingCode] = useState(false);
+  const [showShareCardDialog, setShowShareCardDialog] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -216,8 +219,16 @@ export default function StoryDetailPage() {
                   Write
                 </Link>
                 <button
+                  onClick={() => setShowShareCardDialog(true)}
+                  className="p-2 bg-white/20 text-white rounded-full hover:bg-white/30 transition-colors"
+                  title="Share Story Card"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+                <button
                   onClick={() => setShowPairingCode(!showPairingCode)}
                   className="p-2 bg-white/20 text-white rounded-full hover:bg-white/30 transition-colors"
+                  title="Share Pairing Code"
                 >
                   <Share2 className="w-5 h-5" />
                 </button>
@@ -334,6 +345,27 @@ export default function StoryDetailPage() {
           )}
         </motion.div>
       </div>
+
+      {/* Share Card Dialog */}
+      <ShareableCardDialog
+        open={showShareCardDialog}
+        onClose={() => setShowShareCardDialog(false)}
+        story={{
+          id: story.id,
+          title: story.title,
+          theme: story.theme,
+          created_at: story.created_at,
+          pairing_code: story.pairing_code,
+        }}
+        chapters={chapters.map(chapter => ({
+          id: chapter.id,
+          content: chapter.content,
+          ai_enhanced_content: chapter.ai_enhanced_content,
+          chapter_number: chapter.chapter_number,
+          author_id: chapter.author_id,
+          created_at: chapter.created_at,
+        }))}
+      />
     </>
   );
 }

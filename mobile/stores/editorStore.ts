@@ -247,7 +247,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ isEnhancing: true });
 
     try {
-      const { data, error } = await supabase.functions.invoke<{ enhancedContent: string }>('ai-enhance', {
+      const { data, error } = await supabase.functions.invoke<{
+        success: boolean;
+        data: { enhancedContent: string };
+      }>('ai-enhance', {
         body: {
           content: draftContent,
           storyId,
@@ -256,9 +259,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
 
       if (error) throw error;
+      if (!data?.success) {
+        throw new Error('AI enhancement failed');
+      }
 
       set({
-        aiEnhancedContent: data.enhancedContent,
+        aiEnhancedContent: data.data.enhancedContent,
         aiCostTracker: get().aiCostTracker + enhancementCost,
         tokenCosts: {
           ...get().tokenCosts,

@@ -44,11 +44,6 @@ export const metadata: Metadata = {
     description: 'Transform distance into creative fuel. Write beautiful, collaborative stories with your partner.',
   },
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Parallel',
-  },
 };
 
 export const viewport: Viewport = {
@@ -66,8 +61,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${cormorant.variable} ${sourceSerif.variable} ${crimson.variable}`} suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -89,7 +82,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-cream-100 dark:bg-dark-bg text-ink-950 dark:text-dark-text antialiased transition-colors duration-300">
+      <body className="min-h-screen bg-cream-100 dark:bg-dark-bg text-ink-950 dark:text-dark-text antialiased transition-colors duration-300" suppressHydrationWarning>
         <ThemeProvider
           defaultTheme="system"
           storageKey="parallel-theme"

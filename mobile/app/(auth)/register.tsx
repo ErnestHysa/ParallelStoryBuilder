@@ -126,9 +126,9 @@ export default function RegisterScreen() {
       // Show welcome message
       setShowWelcome(true);
 
-      // After a short delay, navigate to home
+      // After a short delay, navigate to blueprint quiz
       setTimeout(() => {
-        router.replace('/(app)');
+        router.replace('/blueprint');
       }, 2000);
 
     } catch (err: unknown) {

@@ -11,6 +11,7 @@ export interface Profile {
   email: string;
   display_name: string | null;
   avatar_url: string | null;
+  blueprint_data?: QuizResult | null;
   created_at: string;
 }
 
@@ -361,12 +362,26 @@ export interface UserPreferences {
 
 // Onboarding
 export type OnboardingStep = 'welcome' | 'blueprint' | 'partner' | 'complete';
+
+// Re-export Quiz types from blueprintQuiz for convenience
+export type {
+  QuizAnswer,
+  QuizQuestion,
+  QuizResult,
+  QuizOption,
+  ThemeRecommendation,
+  QuizRecommendation,
+} from './blueprintQuiz';
+
+// Legacy alias for RelationshipBlueprint - matches QuizResult structure
 export interface RelationshipBlueprint {
-  relationship_stage: 'new_ldr' | 'established_ldr' | 'veteran_ldr';
-  communication_style: 'writer' | 'talker' | 'visual' | 'shared_experience';
-  love_language: 'words' | 'time' | 'gifts' | 'touch' | 'acts';
-  story_preferences: string[];
-  writing_comfort: 'intimidated' | 'neutral' | 'confident';
+  relationshipStage: 'new_ldr' | 'established_ldr' | 'veteran_ldr';
+  communicationStyle: 'writer' | 'talker' | 'visual' | 'shared_experience';
+  loveLanguage: 'words' | 'time' | 'gifts' | 'touch' | 'acts';
+  storyPreferences: ThemeRecommendation[];
+  writingComfort: 'intimidated' | 'neutral' | 'confident';
+  personalityTraits: string[];
+  recommendations: QuizRecommendation[];
 }
 
 // Offline & Error
