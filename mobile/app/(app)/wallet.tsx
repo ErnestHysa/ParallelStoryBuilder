@@ -276,6 +276,34 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#757575',
   },
+  giftButton: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF5F8',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FCE4EC',
+  },
+  giftButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  giftTextContainer: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  giftTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212121',
+    marginBottom: 4,
+  },
+  giftDescription: {
+    fontSize: 14,
+    color: '#757575',
+  },
   purchaseList: {
     paddingHorizontal: 5,
   },
