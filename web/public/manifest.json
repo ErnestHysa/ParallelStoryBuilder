@@ -7,61 +7,19 @@
   "background_color": "#FAF7F5",
   "theme_color": "#D4567C",
   "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
   "categories": ["social", "lifestyle", "creativity"],
-  "screenshots": [
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/screenshot-narrow.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "shortcuts": [
     {
       "name": "New Story",
       "short_name": "New Story",
       "description": "Create a new story",
-      "url": "/stories/new",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "/stories/new"
     },
     {
       "name": "My Stories",
       "short_name": "Stories",
       "description": "View your stories",
-      "url": "/stories",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "/stories"
     }
   ]
 }

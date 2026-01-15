@@ -44,6 +44,7 @@
     "react-native-screens": "~3.31.0",
     "react-native-share": "^10.0.0",
     "react-native-svg": "15.8.0",
+    "react-native-view-shot": "^3.8.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
