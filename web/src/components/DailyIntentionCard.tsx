@@ -108,7 +108,7 @@ export default function DailyIntentionCard({
           "border border-rose-200 dark:border-rose-900/30"
         )}
       >
-        {!intention ? (
+        {!intention || !intention.intention ? (
           // No intention set - show prompt to set one
           <div className="p-6 text-center">
             <div className="flex justify-center mb-4">
