@@ -1,5 +1,5 @@
 import React from 'react';
-import { getGradientColors, getPalette, CARD_DIMENSIONS } from '@/lib/cardGenerator';
+import { getGradientColors, getGradientByIndex, getPalette, CARD_DIMENSIONS } from '@/lib/cardGenerator';
 
 interface QuoteCardProps {
   config: {
@@ -15,6 +15,7 @@ interface QuoteCardProps {
   width?: number;
   height?: number;
   pairingCode?: string;
+  gradientOverride?: [string, string];
 }
 
 export function QuoteCard({
@@ -24,10 +25,14 @@ export function QuoteCard({
   width,
   height,
   pairingCode,
+  gradientOverride,
 }: QuoteCardProps) {
   const palette = getPalette(theme);
   const dimensions = width && height ? { width, height } : CARD_DIMENSIONS[aspectRatio];
-  const [gradientStart, gradientEnd] = getGradientColors(theme, config.gradientIndex || 0);
+
+  // Use gradient override if provided, otherwise fall back to theme-based gradient
+  const [gradientStart, gradientEnd] = gradientOverride ||
+    getGradientColors(theme, config.gradientIndex || 0);
 
   // Calculate responsive dimensions for preview
   const previewWidth = width || Math.min(400, window.innerWidth - 32);

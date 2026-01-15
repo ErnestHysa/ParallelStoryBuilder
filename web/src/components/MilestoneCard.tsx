@@ -16,6 +16,7 @@ interface MilestoneCardProps {
   width?: number;
   height?: number;
   pairingCode?: string;
+  gradientOverride?: [string, string];
 }
 
 export function MilestoneCard({
@@ -24,10 +25,14 @@ export function MilestoneCard({
   width,
   height,
   pairingCode,
+  gradientOverride,
 }: MilestoneCardProps) {
   const palette = getPalette(config.theme);
   const dimensions = width && height ? { width, height } : CARD_DIMENSIONS[aspectRatio];
-  const [gradientStart, gradientEnd] = getGradientColors(config.theme, config.gradientIndex || 0);
+
+  // Use gradient override if provided, otherwise fall back to theme-based gradient
+  const [gradientStart, gradientEnd] = gradientOverride ||
+    getGradientColors(config.theme, config.gradientIndex || 0);
 
   // Calculate responsive dimensions for preview
   const previewWidth = width || Math.min(400, window.innerWidth - 32);

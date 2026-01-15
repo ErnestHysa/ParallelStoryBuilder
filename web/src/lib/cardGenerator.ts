@@ -1,6 +1,6 @@
 // Card types and generator for web
 
-export type CardStyle = 'quote' | 'milestone' | 'illustrated';
+export type CardStyle = 'quote' | 'milestone' | 'illustrated' | 'origin' | 'chapter';
 export type CardAspectRatio = 'story' | 'square' | 'portrait'; // 9:16, 1:1, 4:5
 
 // Card dimensions for high-quality output
@@ -9,6 +9,58 @@ export const CARD_DIMENSIONS = {
   square: { width: 1080, height: 1080 }, // Instagram Feed
   portrait: { width: 1080, height: 1350 }, // Twitter/LinkedIn
 } as const;
+
+// All available gradients for card backgrounds
+export const ALL_GRADIENTS: [string, string][] = [
+  // Warm & Romantic
+  ['#E91E63', '#9C27B0'], // Pink to Purple
+  ['#FF6B6B', '#FF8E53'], // Coral to Peach
+  ['#F48FB1', '#E91E63'], // Light Pink to Pink
+  ['#FFC107', '#FF9800'], // Amber to Orange
+  ['#FF5722', '#E91E63'], // Orange Red to Pink
+  ['#FF4081', '#F50057'], // Pink to Deep Pink
+
+  // Cool & Calming
+  ['#2196F3', '#00BCD4'], // Blue to Cyan
+  ['#03A9F4', '#0097A7'], // Light Blue to Teal
+  ['#00BCD4', '#009688'], // Cyan to Teal
+  ['#4FC3F7', '#29B6F6'], // Sky Blue to Light Blue
+  ['#5C6BC0', '#3F51B5'], // Indigo to Deep Indigo
+  ['#7E57C2', '#5E35B1'], // Purple to Deep Purple
+
+  // Purple & Fantasy
+  ['#9C27B0', '#673AB7'], // Purple to Deep Purple
+  ['#7B1FA2', '#5E35B1'], // Deep Purple to Violet
+  ['#BA68C8', '#9C27B0'], // Light Purple to Purple
+  ['#FFD700', '#FFA000'], // Gold to Amber
+  ['#FF6B9D', '#C44569'], // Pink to Rose
+
+  // Nature & Earth
+  ['#66BB6A', '#43A047'], // Green to Dark Green
+  ['#81C784', '#66BB6A'], // Light Green to Green
+  ['#26A69A', '#00897B'], // Teal to Dark Teal
+  ['#4DB6AC', '#009688'], // Light Teal to Teal
+
+  // Dramatic & Bold
+  ['#1A1A2E', '#16213E'], // Dark Navy to Darker
+  ['#0F0C29', '#302B63'], // Deep Purple to Navy
+  ['#232526', '#414345'], // Dark Gray to Medium Gray
+  ['#1F1C18', '#8E0E00'], // Almost Black to Red
+];
+
+// Get gradient by index
+export function getGradientByIndex(index: number): [string, string] {
+  return ALL_GRADIENTS[index % ALL_GRADIENTS.length];
+}
+
+// Shuffle to a different gradient
+export function shuffleGradient(currentIndex: number): number {
+  let newIndex;
+  do {
+    newIndex = Math.floor(Math.random() * ALL_GRADIENTS.length);
+  } while (newIndex === currentIndex && ALL_GRADIENTS.length > 1);
+  return newIndex;
+}
 
 // Theme-based color palettes
 export interface CardPalette {
@@ -81,13 +133,22 @@ export interface Chapter {
   created_at: string;
 }
 
+// Strip HTML tags from content
+function stripHtmlTags(html: string): string {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+}
+
 // Quote extraction
 export function extractQuote(chapter: Chapter): string {
   const content = chapter.ai_enhanced_content || chapter.content;
-  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 15 && s.trim().length < 120);
+  // Strip HTML tags before processing
+  const plainText = stripHtmlTags(content);
+  const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 15 && s.trim().length < 120);
 
   if (sentences.length === 0) {
-    return content.substring(0, 100).trim() + (content.length > 100 ? '...' : '');
+    return plainText.substring(0, 100).trim() + (plainText.length > 100 ? '...' : '');
   }
 
   const emotionalWords = ['love', 'heart', 'feel', 'wish', 'hope', 'dream', 'remember', 'always', 'forever'];
@@ -96,6 +157,81 @@ export function extractQuote(chapter: Chapter): string {
   );
 
   return emotionalSentence?.trim() || sentences[0].trim();
+}
+
+// Get multiple quotes from a chapter for browsing/shuffling
+export function extractMultipleQuotes(chapter: Chapter, count: number = 3): string[] {
+  const content = chapter.ai_enhanced_content || chapter.content;
+  const plainText = stripHtmlTags(content);
+  const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 15 && s.trim().length < 150);
+
+  // Get emotional sentences first
+  const emotionalWords = ['love', 'heart', 'feel', 'wish', 'hope', 'dream', 'remember', 'always', 'forever', 'miss', 'need', 'want', 'beautiful', 'happy', 'sad'];
+  const emotionalSentences = sentences.filter(s =>
+    emotionalWords.some(word => s.toLowerCase().includes(word))
+  );
+
+  // Combine emotional sentences first, then others
+  const allSentences = [...emotionalSentences, ...sentences.filter(s => !emotionalSentences.includes(s))];
+
+  // Remove duplicates and get unique quotes
+  const uniqueQuotes = Array.from(new Set(allSentences.map(s => s.trim())));
+
+  return uniqueQuotes.slice(0, count);
+}
+
+// Smart trim that respects sentence boundaries
+export function smartTrim(text: string, maxLength: number = 300): string {
+  const plainText = stripHtmlTags(text).trim();
+
+  if (plainText.length <= maxLength) {
+    return plainText;
+  }
+
+  // Find the last sentence break within the limit
+  const truncated = plainText.substring(0, maxLength);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastExclamation = truncated.lastIndexOf('!');
+  const lastQuestion = truncated.lastIndexOf('?');
+  const lastBreak = Math.max(lastPeriod, lastExclamation, lastQuestion);
+
+  // If we found a sentence break within reasonable distance (at least 50 chars), use it
+  if (lastBreak > maxLength * 0.5) {
+    return plainText.substring(0, lastBreak + 1);
+  }
+
+  // Otherwise, find the next sentence break
+  const remainder = plainText.substring(maxLength);
+  const nextPeriod = remainder.indexOf('.');
+  const nextExclamation = remainder.indexOf('!');
+  const nextQuestion = remainder.indexOf('?');
+
+  const breaks = [nextPeriod, nextExclamation, nextQuestion].filter(i => i >= 0);
+  const nextBreak = breaks.length > 0 ? Math.min(...breaks) : -1;
+
+  if (nextBreak >= 0) {
+    return plainText.substring(0, maxLength + nextBreak + 1);
+  }
+
+  // Fallback: truncate at a word boundary
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    return truncated.substring(0, lastSpace) + '...';
+  }
+
+  return truncated + '...';
+}
+
+// Shuffle to get a different quote from the same chapter
+export function shuffleQuote(chapter: Chapter, previousQuote?: string): string {
+  const quotes = extractMultipleQuotes(chapter, 5);
+  const availableQuotes = previousQuote
+    ? quotes.filter(q => q !== previousQuote)
+    : quotes;
+
+  return availableQuotes.length > 0
+    ? availableQuotes[Math.floor(Math.random() * availableQuotes.length)]
+    : quotes[0] || extractQuote(chapter);
 }
 
 // Card configuration interfaces
@@ -130,7 +266,24 @@ export interface IllustratedCardConfig {
   showBranding?: boolean;
 }
 
-export type CardConfig = QuoteCardConfig | MilestoneCardConfig | IllustratedCardConfig;
+export interface OriginCardConfig {
+  style: 'origin';
+  quote: string;
+  author?: string;
+  gradientIndex?: number;
+  showBranding?: boolean;
+}
+
+export interface ChapterCardConfig {
+  style: 'chapter';
+  chapter: number;
+  excerpt: string;
+  title: string;
+  gradientIndex?: number;
+  showBranding?: boolean;
+}
+
+export type CardConfig = QuoteCardConfig | MilestoneCardConfig | IllustratedCardConfig | OriginCardConfig | ChapterCardConfig;
 
 export interface CardData {
   story: Story;
@@ -219,6 +372,65 @@ export function generateCardData(
         aspectRatio,
       };
     }
+
+    case 'origin': {
+      // Find chapter 1 (the origin)
+      const firstChapter = chapters.find(c => c.chapter_number === 1) || chapters[0];
+      const quote = extractQuote(firstChapter);
+
+      return {
+        story,
+        chapters,
+        config: {
+          style: 'origin',
+          quote,
+          author: story.title,
+          gradientIndex: Math.floor(Math.random() * palette.gradients.length),
+          showBranding: true,
+        },
+        aspectRatio,
+      };
+    }
+
+    case 'chapter': {
+      const latestChapter = chapters[chapters.length - 1];
+      const content = latestChapter.content || latestChapter.ai_enhanced_content || '';
+      const excerpt = smartTrim(content, 300);
+
+      return {
+        story,
+        chapters,
+        config: {
+          style: 'chapter',
+          chapter: latestChapter?.chapter_number || chapters.length,
+          excerpt,
+          title: story.title,
+          gradientIndex: Math.floor(Math.random() * palette.gradients.length),
+          showBranding: true,
+        },
+        aspectRatio,
+      };
+    }
+
+    default: {
+      // Fallback to quote card
+      const latestChapter = chapters[chapters.length - 1];
+      const quote = extractQuote(latestChapter);
+
+      return {
+        story,
+        chapters,
+        config: {
+          style: 'quote',
+          quote,
+          chapter: latestChapter?.chapter_number,
+          author: story.title,
+          gradientIndex: Math.floor(Math.random() * palette.gradients.length),
+          showBranding: true,
+        },
+        aspectRatio,
+      };
+    }
   }
 }
 
@@ -226,10 +438,10 @@ export function generateCardData(
 export function generateCardSuggestions(
   story: Story,
   chapters: Chapter[],
-  count: number = 3
+  count: number = 5
 ): CardData[] {
   const suggestions: CardData[] = [];
-  const styles: CardStyle[] = ['quote', 'milestone', 'illustrated'];
+  const styles: CardStyle[] = ['quote', 'milestone', 'illustrated', 'origin', 'chapter'];
 
   styles.forEach(style => {
     suggestions.push(generateCardData(story, chapters, style));
@@ -265,6 +477,18 @@ export const CARD_STYLE_PRESETS: Record<
     description: 'Beautiful gradient backgrounds with your story title',
     icon: 'image',
     previewColors: ['#9C27B0', '#673AB7'],
+  },
+  origin: {
+    label: 'Story Origin',
+    description: 'Where it all began - a quote from your first chapter',
+    icon: 'heart',
+    previewColors: ['#FF6B6B', '#FF8E53'],
+  },
+  chapter: {
+    label: 'Chapter Excerpt',
+    description: 'A beautiful excerpt from your latest chapter',
+    icon: 'book-open',
+    previewColors: ['#4ECDC4', '#44A08D'],
   },
 };
 

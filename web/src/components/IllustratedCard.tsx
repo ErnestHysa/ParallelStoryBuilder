@@ -17,6 +17,7 @@ interface IllustratedCardProps {
   width?: number;
   height?: number;
   pairingCode?: string;
+  gradientOverride?: [string, string];
 }
 
 export function IllustratedCard({
@@ -26,10 +27,14 @@ export function IllustratedCard({
   width,
   height,
   pairingCode,
+  gradientOverride,
 }: IllustratedCardProps) {
   const palette = getPalette(theme);
   const dimensions = width && height ? { width, height } : CARD_DIMENSIONS[aspectRatio];
-  const [gradientStart, gradientEnd] = getGradientColors(theme, config.gradientIndex || 0);
+
+  // Use gradient override if provided, otherwise fall back to theme-based gradient
+  const [gradientStart, gradientEnd] = gradientOverride ||
+    getGradientColors(theme, config.gradientIndex || 0);
 
   // Calculate responsive dimensions for preview
   const previewWidth = width || Math.min(400, window.innerWidth - 32);
