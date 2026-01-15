@@ -44,7 +44,10 @@
       "Bash(1)",
       "Skill(frontend-design:frontend-design)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm run build)",
+      "Skill(superpowers:using-superpowers)",
+      "Skill(commit-commands:commit)"
     ]
   }
 }
