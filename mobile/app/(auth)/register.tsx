@@ -126,9 +126,9 @@ export default function RegisterScreen() {
       // Show welcome message
       setShowWelcome(true);
 
-      // After a short delay, navigate to blueprint quiz
+      // After a short delay, navigate to email verification screen
       setTimeout(() => {
-        router.replace('/blueprint');
+        router.replace('/(auth)/verify-email');
       }, 2000);
 
     } catch (err: unknown) {

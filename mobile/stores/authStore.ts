@@ -19,6 +19,7 @@ interface AuthState {
   profile: Profile | null;
   session: Session | null;
   isConfigured: boolean;
+  isEmailConfirmed: boolean;
 
   // Token and notification states
   tokenBalance: number;
@@ -30,6 +31,7 @@ interface AuthState {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  checkEmailConfirmation: () => Promise<boolean>;
   verifyEmail: (email: string) => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -47,6 +49,7 @@ const toStoredUser = (user: User | null): StoredUser | null => {
   return {
     id: user.id,
     email: user.email || '',
+    email_confirmed_at: user.email_confirmed_at,
   };
 };
 
@@ -72,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   session: null,
   isConfigured: isSupabaseConfigured(),
+  isEmailConfirmed: false,
   tokenBalance: 0,
   notificationsEnabled: true,
 
@@ -85,7 +89,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
-        set({ user: toStoredUser(session.user), session });
+        const isConfirmed = !!session.user.email_confirmed_at;
+        set({ user: toStoredUser(session.user), session, isEmailConfirmed: isConfirmed });
 
         // Fetch profile
         const { data: profile } = await supabase
@@ -109,14 +114,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error('Supabase is not configured. Please set up your .env file.');
     }
 
+    // Clear old profile before signing in to prevent displaying wrong user data
+    set({ user: null, profile: null, session: null, isEmailConfirmed: false });
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      // Check if error is due to unconfirmed email
+      if (error.message?.includes('Email not confirmed') || error.status === 400) {
+        throw new Error('Please check your email and click the confirmation link before signing in.');
+      }
+      throw error;
+    }
 
-    set({ user: toStoredUser(data.user), session: data.session });
+    // Check if email is confirmed
+    const isConfirmed = !!data.user.email_confirmed_at;
+    if (!isConfirmed) {
+      set({ user: toStoredUser(data.user), session: data.session, isEmailConfirmed: false });
+      throw new Error('Please check your email and click the confirmation link before signing in.');
+    }
+
+    set({ user: toStoredUser(data.user), session: data.session, isEmailConfirmed: true });
 
     // Fetch profile
     const { data: profile } = await supabase
@@ -144,6 +165,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (error) throw error;
 
     if (data.user) {
+      const isConfirmed = !!data.user.email_confirmed_at;
+
       // Create profile
       const { error: profileError } = await supabase
         .from('profiles')
@@ -155,13 +178,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (profileError) throw profileError;
 
-      set({ user: toStoredUser(data.user), profile: {
-        id: data.user.id,
-        email: data.user.email!,
-        display_name: displayName,
-        avatar_url: null,
-        created_at: new Date().toISOString(),
-      }});
+      set({
+        user: toStoredUser(data.user),
+        profile: {
+          id: data.user.id,
+          email: data.user.email!,
+          display_name: displayName,
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+        },
+        isEmailConfirmed: isConfirmed,
+      });
 
       // Initialize token balance
       useTokenStore.getState().setBalance(100); // Starting balance
@@ -172,7 +199,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (isSupabaseConfigured()) {
       await supabase.auth.signOut();
     }
-    set({ user: null, profile: null, session: null, tokenBalance: 0 });
+    set({ user: null, profile: null, session: null, tokenBalance: 0, isEmailConfirmed: false });
     useTokenStore.getState().reset();
   },
 
@@ -189,6 +216,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (data) {
       set({ profile: data });
     }
+  },
+
+  checkEmailConfirmation: async () => {
+    const { user } = get();
+    if (!user) return false;
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      const isConfirmed = !!session.user.email_confirmed_at;
+      set({ isEmailConfirmed: isConfirmed, user: toStoredUser(session.user), session });
+      return isConfirmed;
+    }
+
+    return false;
   },
 
   verifyEmail: async (email: string) => {

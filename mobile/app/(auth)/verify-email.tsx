@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,13 +19,31 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 export default function VerifyEmailScreen() {
   const {
     user,
+    checkEmailConfirmation,
     resendVerificationEmail,
-    refreshProfile,
     signOut
   } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [checkCount, setCheckCount] = useState(0);
+
+  // Auto-check email confirmation every 5 seconds, max 12 times (1 minute)
+  useEffect(() => {
+    if (checkCount < 12) {
+      const interval = setInterval(async () => {
+        const isConfirmed = await checkEmailConfirmation();
+        if (isConfirmed) {
+          Alert.alert('Email Confirmed!', 'Redirecting to onboarding...', [
+            { text: 'OK', onPress: () => router.replace('/blueprint') }
+          ]);
+        }
+        setCheckCount(prev => prev + 1);
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [checkCount, checkEmailConfirmation]);
 
   const handleResendEmail = async () => {
     if (!user) return;
@@ -37,6 +55,7 @@ export default function VerifyEmailScreen() {
         'Email Sent',
         'We\'ve sent another verification email to your inbox.',
       );
+      setCheckCount(0); // Reset check counter to allow more auto-checks
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to send verification email';
       Alert.alert('Error', errorMessage);
@@ -48,9 +67,14 @@ export default function VerifyEmailScreen() {
   const handleCheckAgain = async () => {
     setLoading(true);
     try {
-      await refreshProfile();
-      if (user?.email_confirmed_at) {
-        router.replace('/');
+      const isConfirmed = await checkEmailConfirmation();
+      if (isConfirmed) {
+        Alert.alert('Email Confirmed!', 'Redirecting to onboarding...', [
+          { text: 'OK', onPress: () => router.replace('/blueprint') }
+        ]);
+      } else {
+        Alert.alert('Not Confirmed Yet', 'Please check your email and click the confirmation link.');
+        setCheckCount(prev => prev + 1);
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to check verification status';
@@ -63,14 +87,14 @@ export default function VerifyEmailScreen() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.replace('/(app)/join-story');
+      router.replace('/(auth)/login');
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to sign out';
       Alert.alert('Error', errorMessage);
     }
   };
 
-  if (loading) {
+  if (loading && !user) {
     return <LoadingSpinner />;
   }
 
@@ -95,37 +119,49 @@ export default function VerifyEmailScreen() {
           </Text>
           <Card variant="outlined" style={styles.emailCard}>
             <Text style={styles.emailText}>
-              {user?.email}
+              {user?.email || 'your email'}
             </Text>
           </Card>
         </View>
 
         <Card style={styles.messageCard}>
-          <Text style={styles.messageTitle}>Get Started Faster</Text>
+          <Text style={styles.messageTitle}>Before You Start</Text>
           <Text style={styles.messageText}>
-            Verify your email to:
+            You must verify your email to continue. This prevents account creation under wrong users.
           </Text>
           <View style={styles.bulletList}>
             <View style={styles.bulletItem}>
               <View style={styles.bullet} />
               <Text style={styles.bulletText}>
-                Enable real-time collaboration
+                Keeps your account secure
               </Text>
             </View>
             <View style={styles.bulletItem}>
               <View style={styles.bullet} />
               <Text style={styles.bulletText}>
-                Save your stories securely
+                Ensures stories belong to the right person
               </Text>
             </View>
             <View style={styles.bulletItem}>
               <View style={styles.bullet} />
               <Text style={styles.bulletText}>
-                Access all premium features
+                Required for onboarding
               </Text>
             </View>
           </View>
         </Card>
+
+        {/* Auto-check indicator */}
+        {checkCount < 12 && (
+          <Card variant="outlined" style={styles.autoCheckCard}>
+            <View style={styles.autoCheckContent}>
+              <ActivityIndicator size="small" color="#E91E63" />
+              <Text style={styles.autoCheckText}>
+                Checking for confirmation... ({checkCount}/12)
+              </Text>
+            </View>
+          </Card>
+        )}
 
         <View style={styles.actions}>
           <Button
@@ -153,7 +189,7 @@ export default function VerifyEmailScreen() {
             accessibilityLabel="Sign out"
             accessibilityHint="Return to sign in screen"
           >
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText}>Back to Sign In</Text>
           </TouchableOpacity>
         </View>
 
@@ -220,7 +256,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   messageCard: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   messageTitle: {
     fontSize: 20,
@@ -254,6 +290,19 @@ const styles = StyleSheet.create({
     color: '#212121',
     flex: 1,
     lineHeight: 24,
+  },
+  autoCheckCard: {
+    marginBottom: 16,
+    padding: 16,
+  },
+  autoCheckContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  autoCheckText: {
+    fontSize: 14,
+    color: '#757575',
   },
   actions: {
     gap: 12,

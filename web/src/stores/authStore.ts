@@ -10,6 +10,7 @@ interface AuthState {
   session: string | null;
   isLoading: boolean;
   isConfigured: boolean;
+  isEmailConfirmed: boolean;
 
   // Actions
   initialize: () => Promise<void>;
@@ -18,6 +19,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  checkEmailConfirmation: () => Promise<boolean>;
 }
 
 const isSupabaseConfigured = (): boolean => {
@@ -34,6 +36,7 @@ export const useAuthStore = create<AuthState>()(
       session: null,
       isLoading: true,
       isConfigured: isSupabaseConfigured(),
+      isEmailConfirmed: false,
 
       initialize: async () => {
         if (!isSupabaseConfigured()) {
@@ -46,7 +49,8 @@ export const useAuthStore = create<AuthState>()(
           const { data: { session } } = await supabase.auth.getSession();
 
           if (session?.user) {
-            set({ user: session.user, session: session.access_token });
+            const isConfirmed = !!session.user.email_confirmed_at;
+            set({ user: session.user, session: session.access_token, isEmailConfirmed: isConfirmed });
 
             // Fetch profile
             const { data: profile } = await supabase
@@ -69,15 +73,31 @@ export const useAuthStore = create<AuthState>()(
           throw new Error('Supabase is not configured. Please set up your .env file.');
         }
 
+        // Clear old profile before signing in to prevent displaying wrong user data
+        set({ user: null, profile: null, session: null, isEmailConfirmed: false });
+
         const supabase = getSupabaseClient();
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
+        if (error) {
+          // Check if error is due to unconfirmed email
+          if (error.message?.includes('Email not confirmed') || error.status === 400) {
+            throw new Error('Please check your email and click the confirmation link before signing in.');
+          }
+          throw error;
+        }
 
-        set({ user: data.user, session: data.session.access_token });
+        // Check if email is confirmed
+        const isConfirmed = !!data.user.email_confirmed_at;
+        if (!isConfirmed) {
+          set({ user: data.user, session: data.session.access_token, isEmailConfirmed: false });
+          throw new Error('Please check your email and click the confirmation link before signing in.');
+        }
+
+        set({ user: data.user, session: data.session.access_token, isEmailConfirmed: true });
 
         // Fetch profile
         const { data: profile } = await supabase
@@ -103,6 +123,8 @@ export const useAuthStore = create<AuthState>()(
         if (error) throw error;
 
         if (data.user) {
+          const isConfirmed = !!data.user.email_confirmed_at;
+
           // Create profile
           const { error: profileError } = await supabase
             .from('profiles')
@@ -124,6 +146,7 @@ export const useAuthStore = create<AuthState>()(
               created_at: new Date().toISOString(),
             },
             session: data.session?.access_token || null,
+            isEmailConfirmed: isConfirmed,
           });
         }
       },
@@ -132,11 +155,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           const supabase = getSupabaseClient();
           await supabase.auth.signOut();
-          set({ user: null, profile: null, session: null });
+          set({ user: null, profile: null, session: null, isEmailConfirmed: false });
         } catch (error) {
           console.error('Error during sign out:', error);
           // Still clear local state even if sign out fails on server
-          set({ user: null, profile: null, session: null });
+          set({ user: null, profile: null, session: null, isEmailConfirmed: false });
           throw error;
         }
       },
@@ -174,6 +197,22 @@ export const useAuthStore = create<AuthState>()(
         set((state) => ({
           profile: state.profile ? { ...state.profile, ...updates } : null,
         }));
+      },
+
+      checkEmailConfirmation: async () => {
+        const { user } = get();
+        if (!user) return false;
+
+        const supabase = getSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const isConfirmed = !!session.user.email_confirmed_at;
+          set({ isEmailConfirmed: isConfirmed, user: session.user });
+          return isConfirmed;
+        }
+
+        return false;
       },
     }),
     {
