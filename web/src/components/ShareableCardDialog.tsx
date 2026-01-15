@@ -140,7 +140,8 @@ export function ShareableCardDialog({
     const quoteOverride = (selectedStyle === 'quote' || selectedStyle === 'origin') && customQuote
       ? {
           quote: customQuote,
-          chapter: customQuoteChapter ?? baseCard.config.chapter,
+          ...(customQuoteChapter !== undefined && { chapter: customQuoteChapter }),
+          ...((customQuoteChapter === undefined) && 'chapter' in baseCard.config && { chapter: baseCard.config.chapter }),
         }
       : {};
 
