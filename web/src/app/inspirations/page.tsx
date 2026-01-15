@@ -43,8 +43,11 @@ const themeColors: Record<string, { gradient: string; bg: string; emoji: string 
 
 export default function AllInspirationsPage() {
   const router = useRouter();
-  const intentionsService = getIntentionsService();
-  const supabase = getSupabaseClient();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const [allInspirations, setAllInspirations] = useState<(Inspiration & { story?: any })[]>([]);
   const [filteredInspirations, setFilteredInspirations] = useState<(Inspiration & { story?: any })[]>([]);
@@ -58,14 +61,18 @@ export default function AllInspirationsPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (isClient) {
+      loadAllData();
+    }
+  }, [isClient]);
 
   useEffect(() => {
     applyFilters();
   }, [searchQuery, selectedTheme, selectedStory, allInspirations]);
 
   const loadAllData = async () => {
+    const supabase = getSupabaseClient();
+    const intentionsService = getIntentionsService();
     try {
       // Load all stories
       const { data: { user } } = await supabase.auth.getUser();
@@ -83,7 +90,7 @@ export default function AllInspirationsPage() {
         setStories(storiesData);
 
         // Load inspirations for each story
-        const inspirationsPromises = storiesData.map(async (story) => {
+        const inspirationsPromises = storiesData.map(async (story: any) => {
           const storyInspirations = await intentionsService.getInspirations(story.id);
           return storyInspirations.map((insp) => ({ ...insp, story }));
         });
@@ -127,6 +134,7 @@ export default function AllInspirationsPage() {
   };
 
   const handleDeleteInspiration = async (inspirationId: string) => {
+    const intentionsService = getIntentionsService();
     try {
       await intentionsService.deleteInspiration(inspirationId);
       setAllInspirations((prev) => prev.filter((i) => i.id !== inspirationId));
@@ -150,7 +158,7 @@ export default function AllInspirationsPage() {
     });
   };
 
-  if (isLoading) {
+  if (!isClient || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <motion.div

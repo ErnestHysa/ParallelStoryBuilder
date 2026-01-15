@@ -17,6 +17,7 @@ import {
   Search,
   Filter,
   Link as LinkIcon,
+  Lightbulb,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -268,6 +269,13 @@ export default function StoriesPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              href="/inspirations"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-dark-bgSecondary border-2 border-amethyst-300 dark:border-amethyst-700 text-amethyst-600 dark:text-amethyst-400 rounded-full font-accent font-medium hover:shadow-soft hover:scale-105 transition-all duration-300"
+            >
+              <Lightbulb className="w-5 h-5" />
+              Inspirations
+            </Link>
             <Link
               href="/join"
               className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-dark-bgSecondary border-2 border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 rounded-full font-accent font-medium hover:shadow-soft hover:scale-105 transition-all duration-300"
