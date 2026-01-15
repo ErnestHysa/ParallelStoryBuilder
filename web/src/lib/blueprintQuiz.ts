@@ -68,7 +68,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     icon: '💕',
     options: [
       { id: 'together_1', label: 'Less than 6 months', value: 'new_ldr' },
-      { id: 'together_2', label: '6 months - 2 years', value: 'established_ldr' },
+      { id: 'together_2', label: '6 months - 2 years', value: 'early_ldr' },
       { id: 'together_3', label: '2-5 years', value: 'established_ldr' },
       { id: 'together_4', label: '5+ years', value: 'veteran_ldr' },
     ],
@@ -309,7 +309,8 @@ export function calculateQuizResults(answers: QuizAnswer[]): QuizResult {
   const q1Answer = answerMap.get('q1_together_duration')?.value as string;
   const relationshipStage: QuizResult['relationshipStage'] =
     q1Answer === 'new_ldr' ? 'new_ldr' :
-    q1Answer === 'veteran_ldr' ? 'veteran_ldr' : 'established_ldr';
+    q1Answer === 'veteran_ldr' ? 'veteran_ldr' :
+    q1Answer === 'early_ldr' ? 'established_ldr' : 'established_ldr';
 
   // Determine communication style
   const connAnswer = answerMap.get('q4_preferred_connection')?.value as string;
