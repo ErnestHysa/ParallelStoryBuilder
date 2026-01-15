@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Check, Camera } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSettingsService, type UserProfile } from '@/lib/settings';
 import { SettingsCard, SettingItem } from '@/components/settings/SettingsCard';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -29,13 +29,39 @@ const AVATAR_OPTIONS = [
 export default function ProfileSettingsPage() {
   const router = useRouter();
   const { profile, refreshProfile } = useAuthStore();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const settingsService = getSettingsService();
 
   useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    setIsLoading(true);
+    try {
+      const loadedProfile = await settingsService.getProfile();
+      if (loadedProfile) {
+        setUserProfile(loadedProfile);
+        setDisplayName(loadedProfile.display_name || '');
+        setAvatarUrl(loadedProfile.avatar_url);
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      toast.error('Failed to load profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Also sync with authStore profile
     if (profile) {
       setDisplayName(profile.display_name || '');
       setAvatarUrl(profile.avatar_url);
@@ -43,10 +69,12 @@ export default function ProfileSettingsPage() {
   }, [profile]);
 
   useEffect(() => {
-    const changed = displayName !== (profile?.display_name || '') ||
-                   avatarUrl !== profile?.avatar_url;
+    const originalDisplayName = userProfile?.display_name || '';
+    const originalAvatarUrl = userProfile?.avatar_url || null;
+    const changed = displayName !== originalDisplayName ||
+                   avatarUrl !== originalAvatarUrl;
     setHasChanges(changed);
-  }, [displayName, avatarUrl, profile]);
+  }, [displayName, avatarUrl, userProfile]);
 
   const handleSave = async () => {
     if (!displayName.trim()) {
@@ -62,22 +90,13 @@ export default function ProfileSettingsPage() {
     setIsSaving(true);
 
     try {
-      const supabase = getSupabaseClient();
-      const updates: { display_name: string; avatar_url?: string | null } = {
+      await settingsService.updateProfile({
         display_name: displayName.trim(),
-      };
+        avatar_url: avatarUrl,
+      });
 
-      if (avatarUrl !== profile?.avatar_url) {
-        updates.avatar_url = avatarUrl;
-      }
-
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', profile?.id);
-
-      if (error) throw error;
-
+      // Refresh local state and auth store
+      await loadProfile();
       await refreshProfile();
       setHasChanges(false);
       toast.success('Profile updated successfully!');
@@ -98,26 +117,11 @@ export default function ProfileSettingsPage() {
       new URL(customAvatarUrl);
       setAvatarUrl(customAvatarUrl.trim());
       setCustomAvatarUrl('');
-      toast.success('Custom avatar set!');
+      toast.success('Custom avatar set! Don\'t forget to save.');
     } catch {
       toast.error('Please enter a valid URL');
     }
   };
-
-  const memberSince = profile?.created_at
-    ? new Date(profile.created_at).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      })
-    : null;
-
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
-      </div>
-    );
-  }
 
   const getAvatarEmoji = (avatarUrl: string | null) => {
     if (!avatarUrl) return '👤';
@@ -127,6 +131,29 @@ export default function ProfileSettingsPage() {
     };
     return emojiMap[avatarUrl] || '👤';
   };
+
+  const memberSince = userProfile?.created_at
+    ? new Date(userProfile.created_at).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : profile?.created_at
+      ? new Date(profile.created_at).toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        })
+      : null;
+
+  const displayEmail = userProfile?.email || profile?.email || '';
+  const displayId = userProfile?.id || profile?.id || '';
+
+  if (isLoading && !userProfile) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -140,7 +167,7 @@ export default function ProfileSettingsPage() {
           href="/settings"
           className="w-10 h-10 rounded-xl bg-white dark:bg-dark-bgSecondary hover:bg-cream-100 dark:hover:bg-dark-bgTertiary flex items-center justify-center transition-colors border border-cream-200 dark:border-dark-border"
         >
-          <ArrowLeft className="w-5 h-5 text-ink-700 dark:text-dark-text" />
+          <ArrowLeft className="w-5 h-5 text-ink-950 dark:text-dark-text" />
         </Link>
         <div>
           <h1 className="font-display text-display-md text-ink-950 dark:text-dark-text">
@@ -306,7 +333,7 @@ export default function ProfileSettingsPage() {
               <div className="space-y-4">
                 <SettingItem
                   label="Email Address"
-                  description={profile.email}
+                  description={displayEmail}
                   action={
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-100 dark:bg-ink-900 text-xs font-medium text-ink-600 dark:text-ink-400">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -327,11 +354,11 @@ export default function ProfileSettingsPage() {
                 />
                 <SettingItem
                   label="Account ID"
-                  description={profile.id.slice(0, 8) + '...'}
+                  description={displayId.slice(0, 8) + '...'}
                   action={
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(profile.id);
+                        navigator.clipboard.writeText(displayId);
                         toast.success('Account ID copied!');
                       }}
                       className="text-sm text-rose-600 dark:text-rose-400 hover:underline font-medium"
@@ -340,6 +367,42 @@ export default function ProfileSettingsPage() {
                     </button>
                   }
                 />
+              </div>
+            </SettingsCard>
+          </motion.div>
+
+          {/* Language Setting (synced with appearance) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+          >
+            <SettingsCard title="Language" description="Your preferred language">
+              <div>
+                <select
+                  className="w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-dark-bgTertiary font-body text-ink-950 dark:text-dark-text border-cream-300 dark:border-dark-border focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 outline-none transition-colors"
+                  defaultValue={userProfile?.language || 'en'}
+                  disabled={isSaving}
+                  onChange={(e) => {
+                    // Save language preference
+                    settingsService.updatePreferences({ language: e.target.value })
+                      .then(() => {
+                        toast.success('Language preference saved');
+                        loadProfile();
+                      })
+                      .catch(() => toast.error('Failed to save language'));
+                  }}
+                >
+                  <option value="en">🇺🇸 English</option>
+                  <option value="es">🇪🇸 Español</option>
+                  <option value="fr">🇫🇷 Français</option>
+                  <option value="de">🇩🇪 Deutsch</option>
+                  <option value="ja">🇯🇵 日本語</option>
+                  <option value="zh">🇨🇳 中文</option>
+                </select>
+                <p className="text-sm text-ink-500 dark:text-dark-textMuted mt-2">
+                  This preference syncs across all your devices
+                </p>
               </div>
             </SettingsCard>
           </motion.div>

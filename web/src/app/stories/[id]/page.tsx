@@ -241,6 +241,13 @@ export default function StoryDetailPage() {
               {/* Actions */}
               <div className="flex items-center gap-2">
                 <Link
+                  href={`/stories/${story.id}/inspirations`}
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-bgSecondary text-ink-950 dark:text-dark-text rounded-full font-accent font-medium hover:shadow-elegant transition-all"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Inspirations
+                </Link>
+                <Link
                   href={`/stories/${story.id}/write`}
                   className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-bgSecondary text-ink-950 dark:text-dark-text rounded-full font-accent font-medium hover:shadow-elegant transition-all"
                 >

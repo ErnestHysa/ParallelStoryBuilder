@@ -3,54 +3,69 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowLeft, Bell, Mail, MessageCircle, Sparkles, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Bell, Mail, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
-
-interface NotificationSettings {
-  newChapter: boolean;
-  partnerJoined: boolean;
-  dailyIntention: boolean;
-  weeklyHighlights: boolean;
-  aiReminder: boolean;
-  emailNewChapter: boolean;
-  emailWeekly: boolean;
-  emailMarketing: boolean;
-}
-
-const defaultSettings: NotificationSettings = {
-  newChapter: true,
-  partnerJoined: true,
-  dailyIntention: true,
-  weeklyHighlights: true,
-  aiReminder: true,
-  emailNewChapter: false,
-  emailWeekly: false,
-  emailMarketing: false,
-};
+import { getSettingsService, type NotificationSettings } from '@/lib/settings';
 
 export default function NotificationSettingsPage() {
-  const [settings, setSettings] = useState<NotificationSettings>(defaultSettings);
+  const [settings, setSettings] = useState<NotificationSettings>({
+    new_chapter: true,
+    partner_joined: true,
+    daily_intention: true,
+    weekly_highlights: true,
+    ai_reminder: true,
+    email_new_chapter: false,
+    email_weekly: false,
+    email_marketing: false,
+    push_enabled: false,
+  });
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [pushPermission, setPushPermission] = useState<NotificationPermission | 'default'>('default');
 
-  useEffect(() => {
-    const saved = localStorage.getItem('notification-settings');
-    if (saved) {
-      try {
-        setSettings(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse notification settings:', e);
-      }
-    }
+  const settingsService = getSettingsService();
 
+  useEffect(() => {
+    loadSettings();
+    loadPushPermission();
+  }, []);
+
+  const loadSettings = async () => {
+    setIsLoading(true);
+    try {
+      const loadedSettings = await settingsService.loadNotificationSettings();
+      setSettings(loadedSettings);
+    } catch (error) {
+      console.error('Failed to load notification settings:', error);
+      toast.error('Failed to load notification settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadPushPermission = () => {
     if ('Notification' in window) {
       setPushPermission(Notification.permission);
     }
-  }, []);
+  };
 
-  const handleToggle = (key: keyof NotificationSettings, value: boolean) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  const handleToggle = async (key: keyof NotificationSettings, value: boolean) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+
+    setIsSaving(true);
+    try {
+      await settingsService.updateNotificationPreferences(newSettings);
+      toast.success('Notification preferences updated!');
+    } catch (error) {
+      console.error('Failed to update notification settings:', error);
+      toast.error('Failed to update settings');
+      // Revert on error
+      setSettings(settings);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEnablePush = async () => {
@@ -63,20 +78,34 @@ export default function NotificationSettingsPage() {
     setPushPermission(permission);
 
     if (permission === 'granted') {
-      handleToggle('newChapter', true);
+      await handleToggle('push_enabled', true);
       toast.success('Notifications enabled!');
     } else if (permission === 'denied') {
       toast.error('Notifications blocked. Enable them in your browser settings.');
     }
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    localStorage.setItem('notification-settings', JSON.stringify(settings));
-    setIsSaving(false);
-    toast.success('Notification preferences saved!');
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      </div>
+    );
+  }
+
+  const inAppNotifications = [
+    { key: 'new_chapter' as const, label: 'New Chapter Written', desc: 'When your partner writes' },
+    { key: 'partner_joined' as const, label: 'Partner Joins Story', desc: 'Partner accepts invitation' },
+    { key: 'daily_intention' as const, label: 'Daily Intention', desc: 'Reminder to set intention' },
+    { key: 'weekly_highlights' as const, label: 'Weekly Highlights', desc: 'Weekly story summary' },
+    { key: 'ai_reminder' as const, label: 'AI Writing Reminders', desc: 'Continue your story' },
+  ];
+
+  const emailNotifications = [
+    { key: 'email_new_chapter' as const, label: 'New Chapter Alerts', desc: 'Email when partner writes' },
+    { key: 'email_weekly' as const, label: 'Weekly Digest', desc: 'Weekly summary email' },
+    { key: 'email_marketing' as const, label: 'Marketing Updates', desc: 'News and features' },
+  ];
 
   return (
     <div className="w-full">
@@ -90,7 +119,7 @@ export default function NotificationSettingsPage() {
           href="/settings"
           className="w-10 h-10 rounded-xl bg-white dark:bg-dark-bgSecondary hover:bg-cream-100 dark:hover:bg-dark-bgTertiary flex items-center justify-center transition-colors border border-cream-200 dark:border-dark-border"
         >
-          <ArrowLeft className="w-5 h-5 text-ink-700 dark:text-dark-text" />
+          <ArrowLeft className="w-5 h-5 text-ink-950 dark:text-dark-text" />
         </Link>
         <div>
           <h1 className="font-display text-display-md text-ink-950 dark:text-dark-text">
@@ -141,9 +170,10 @@ export default function NotificationSettingsPage() {
           ) : (
             <button
               onClick={handleEnablePush}
-              className="px-5 py-2.5 rounded-xl bg-white text-rose-600 font-medium hover:shadow-lg transition-all hover:scale-105"
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-xl bg-white text-rose-600 font-medium hover:shadow-lg transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Enable
+              {isSaving ? 'Enabling...' : 'Enable'}
             </button>
           )}
         </div>
@@ -165,13 +195,7 @@ export default function NotificationSettingsPage() {
             <h3 className="font-body font-semibold text-ink-950 dark:text-dark-text">In-App Notifications</h3>
           </div>
           <div className="p-6 space-y-4">
-            {[
-              { key: 'newChapter' as const, label: 'New Chapter Written', desc: 'When your partner writes' },
-              { key: 'partnerJoined' as const, label: 'Partner Joins Story', desc: 'Partner accepts invitation' },
-              {key: 'dailyIntention' as const, label: 'Daily Intention', desc: 'Reminder to set intention'},
-              {key: 'weeklyHighlights' as const, label: 'Weekly Highlights', desc: 'Weekly story summary'},
-              {key: 'aiReminder' as const, label: 'AI Writing Reminders', desc: 'Continue your story'},
-            ].map((item) => (
+            {inAppNotifications.map((item) => (
               <div key={item.key} className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-ink-950 dark:text-dark-text">{item.label}</p>
@@ -179,9 +203,11 @@ export default function NotificationSettingsPage() {
                 </div>
                 <button
                   onClick={() => handleToggle(item.key, !settings[item.key])}
+                  disabled={isSaving}
                   className={cn(
                     'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
-                    settings[item.key] ? 'bg-rose-500' : 'bg-cream-300 dark:bg-dark-border'
+                    settings[item.key] ? 'bg-rose-500' : 'bg-cream-300 dark:bg-dark-border',
+                    isSaving && 'opacity-50 cursor-wait'
                   )}
                 >
                   <span
@@ -210,11 +236,7 @@ export default function NotificationSettingsPage() {
             <h3 className="font-body font-semibold text-ink-950 dark:text-dark-text">Email Notifications</h3>
           </div>
           <div className="p-6 space-y-4">
-            {[
-              { key: 'emailNewChapter' as const, label: 'New Chapter Alerts', desc: 'Email when partner writes' },
-              { key: 'emailWeekly' as const, label: 'Weekly Digest', desc: 'Weekly summary email' },
-              { key: 'emailMarketing' as const, label: 'Marketing Updates', desc: 'News and features' },
-            ].map((item) => (
+            {emailNotifications.map((item) => (
               <div key={item.key} className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-ink-950 dark:text-dark-text">{item.label}</p>
@@ -222,9 +244,11 @@ export default function NotificationSettingsPage() {
                 </div>
                 <button
                   onClick={() => handleToggle(item.key, !settings[item.key])}
+                  disabled={isSaving}
                   className={cn(
                     'relative inline-flex h-7 w-12 items-center rounded-full transition-colors',
-                    settings[item.key] ? 'bg-rose-500' : 'bg-cream-300 dark:bg-dark-border'
+                    settings[item.key] ? 'bg-rose-500' : 'bg-cream-300 dark:bg-dark-border',
+                    isSaving && 'opacity-50 cursor-wait'
                   )}
                 >
                   <span
@@ -270,7 +294,7 @@ export default function NotificationSettingsPage() {
         className="flex justify-end"
       >
         <button
-          onClick={handleSave}
+          onClick={loadSettings}
           disabled={isSaving}
           className={cn(
             'px-6 py-3 rounded-xl font-accent font-medium transition-all flex items-center gap-2',
@@ -281,10 +305,7 @@ export default function NotificationSettingsPage() {
         >
           {isSaving ? (
             <>
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <Loader2 className="w-5 h-5 animate-spin" />
               Saving...
             </>
           ) : (

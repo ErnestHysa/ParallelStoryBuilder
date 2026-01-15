@@ -48,7 +48,15 @@ export interface Inspiration {
   story_id: string;
   user_id: string;
   content: string;
+  media?: MediaAttachment[];
   created_at: string;
+}
+
+export interface MediaAttachment {
+  id: string;
+  type: 'image' | 'video' | 'audio';
+  url: string;
+  title?: string;
 }
 
 export interface StoryWithMembers extends Story {
