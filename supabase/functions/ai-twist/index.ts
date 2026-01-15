@@ -41,16 +41,31 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
   const requestOrigin = origin || '';
 
+  // Default allowed origins for local development
+  const defaultLocalOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:8081',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://192.168.1.1:8081',
+    'exp://192.168.1.1:8081',
+    'exp://127.0.0.1:8081',
+  ];
+
+  const allAllowedOrigins = [...defaultLocalOrigins, ...allowedOrigins];
+
   // Validate origin against allowed list
-  const validOrigin = allowedOrigins.includes(requestOrigin)
+  const validOrigin = allAllowedOrigins.includes(requestOrigin)
     ? requestOrigin
-    : allowedOrigins[0] || '';
+    : allowedOrigins[0] || requestOrigin || '*';
 
   return {
     'Access-Control-Allow-Origin': validOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'true',
   };
 }
 

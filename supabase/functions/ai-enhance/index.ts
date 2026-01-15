@@ -41,16 +41,31 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
   const requestOrigin = origin || '';
 
+  // Default allowed origins for local development
+  const defaultLocalOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:8081',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://192.168.1.1:8081',
+    'exp://192.168.1.1:8081',
+    'exp://127.0.0.1:8081',
+  ];
+
+  const allAllowedOrigins = [...defaultLocalOrigins, ...allowedOrigins];
+
   // Validate origin against allowed list
-  const validOrigin = allowedOrigins.includes(requestOrigin)
+  const validOrigin = allAllowedOrigins.includes(requestOrigin)
     ? requestOrigin
-    : allowedOrigins[0] || '';
+    : allowedOrigins[0] || requestOrigin || '*';
 
   return {
     'Access-Control-Allow-Origin': validOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'true',
   };
 }
 
@@ -166,6 +181,11 @@ serve(async (req) => {
       });
     }
 
+    // Log for debugging auth issues
+    console.log('Auth header present:', !!authHeader);
+    console.log('SUPABASE_URL configured:', !!Deno.env.get('SUPABASE_URL'));
+    console.log('SUPABASE_ANON_KEY configured:', !!Deno.env.get('SUPABASE_ANON_KEY'));
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -174,7 +194,16 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid authorization' }), {
+      console.error('Auth error details:', authError?.message, authError?.status, authError?.name);
+      return new Response(JSON.stringify({
+        error: 'Invalid authorization',
+        details: authError?.message || 'User not found',
+        debug: {
+          hasAuthHeader: !!authHeader,
+          hasUrl: !!Deno.env.get('SUPABASE_URL'),
+          hasAnonKey: !!Deno.env.get('SUPABASE_ANON_KEY'),
+        }
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -275,14 +304,21 @@ Return ONLY the enhanced text, no explanations or meta-commentary.`;
     const geminiData = await geminiResponse.json();
     const enhancedContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || sanitizedContent;
 
-    const response: EnhanceResponse = { enhancedContent };
+    // Return consistent response structure for both mobile and web
+    const response = {
+      success: true,
+      data: { enhancedContent }
+    };
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Error in ai-enhance function:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Internal server error'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
