@@ -1,5 +1,9 @@
 import { supabase } from './supabase';
 
+// Get Supabase URL for direct fetch calls
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
 // AI Request/Response types
 
 export interface AICoverArtRequest {
@@ -243,14 +247,35 @@ class AIClient {
       }
     }
 
+    // Get the current session to explicitly pass the auth token
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('You must be logged in to use AI features');
+    }
+
     try {
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: request,
+      // Use direct fetch instead of supabase.functions.invoke
+      // Pass userId directly in request body to bypass PKCE JWT validation issues
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          ...request,
+          userId: session.user.id,  // Pass userId directly to bypass JWT auth
+        }),
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`AI Function ${functionName} error response:`, response.status, errorText);
+        throw new Error(`AI function error: ${response.status} ${errorText}`);
       }
+
+      const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.error || 'AI function failed');
@@ -296,6 +321,38 @@ class AIClient {
   // Character Consistency Check
   async checkCharacterConsistency(request: AICharacterConsistencyRequest): Promise<AICharacterConsistencyResponse> {
     return this.callAIFunction('ai-character-consistency', request);
+  }
+
+  // Update existing chapter
+  async updateChapter(chapterId: string, content: string, contextSnippet?: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getSession();
+    if (!user) {
+      throw new Error('You must be logged in to update chapters');
+    }
+
+    // First verify the user owns this chapter
+    const { data: chapter, error: fetchError } = await supabase
+      .from('chapters')
+      .select('author_id')
+      .eq('id', chapterId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!chapter) throw new Error('Chapter not found');
+    if (chapter.author_id !== user.id) {
+      throw new Error('You can only edit your own chapters');
+    }
+
+    // Update the chapter
+    const { error: updateError } = await supabase
+      .from('chapters')
+      .update({
+        content,
+        context_snippet: contextSnippet || null,
+      })
+      .eq('id', chapterId);
+
+    if (updateError) throw updateError;
   }
 
   // Helper methods

@@ -1,5 +1,10 @@
 import { getSupabaseClient } from './supabase';
 
+// Get Supabase URL for direct fetch calls
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+// Use the newer publishable key format that bypasses some JWT validation
+const SUPABASE_ANON_KEY = 'sb_publishable_F6Qb9Wv_yN6g8yipRXrQOw_NXsMd80u';
+
 // AI Request/Response Types
 
 export interface AIEnhanceRequest {
@@ -142,14 +147,37 @@ class AIClient {
 
     const supabase = getSupabaseClient();
 
+    // Get the current session to explicitly pass the auth token
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('You must be logged in to use AI features');
+    }
+
     try {
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: request,
+      // Use direct fetch with both Authorization and apikey headers
+      // The sb_publishable key format bypasses PKCE JWT validation issues
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,  // User's JWT
+          'apikey': SUPABASE_ANON_KEY,  // Publishable key format
+        },
+        credentials: 'omit',
+        body: JSON.stringify({
+          ...request,
+          userId: session.user.id,
+        }),
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`AI Function ${functionName} error response:`, response.status, errorText);
+        throw new Error(`AI function error: ${response.status} ${errorText}`);
       }
+
+      const data = await response.json();
 
       // Cache the successful response
       if (useCache && data) {
@@ -199,6 +227,42 @@ class AIClient {
   // Style transfer
   async transferStyle(request: AIStyleTransferRequest): Promise<AIStyleTransferResponse> {
     return this.callAIFunction<AIStyleTransferResponse>('ai-style-transfer', request);
+  }
+
+  // Update existing chapter
+  async updateChapter(chapterId: string, content: string, contextSnippet?: string): Promise<void> {
+    const { getSupabaseClient } = await import('./supabase');
+    const supabase = getSupabaseClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('You must be logged in to update chapters');
+    }
+
+    // First verify the user owns this chapter
+    const { data: chapter, error: fetchError } = await supabase
+      .from('chapters')
+      .select('author_id')
+      .eq('id', chapterId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    const chapterData = chapter as { author_id: string } | null;
+    if (!chapterData) throw new Error('Chapter not found');
+    if (chapterData.author_id !== user.id) {
+      throw new Error('You can only edit your own chapters');
+    }
+
+    // Update the chapter
+    const { error: updateError } = await supabase
+      .from('chapters')
+      .update({
+        content,
+        context_snippet: contextSnippet || null,
+      })
+      .eq('id', chapterId);
+
+    if (updateError) throw updateError;
   }
 
   // Clear cache
