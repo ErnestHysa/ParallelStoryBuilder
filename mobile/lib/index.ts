@@ -36,6 +36,10 @@ export * from './screenReader';
 export * from './mediaStorage';
 export * from './richTextSerializer';
 
+// A/B Testing & Gifts
+export * from './abTesting';
+export * from './giftSparks';
+
 // Initialize security services
 export const initializeSecurity = async () => {
   try {

@@ -41,6 +41,7 @@ export default function ChapterViewPage() {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authorName, setAuthorName] = useState<string>('');
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     loadChapter();
@@ -70,6 +71,11 @@ export default function ChapterViewPage() {
 
       if (chapterError) throw chapterError;
       setChapter(chapterData as unknown as Chapter);
+
+      // Check if current user is the author
+      if (chapterData && profile) {
+        setCanEdit((chapterData as any).author_id === profile.id);
+      }
 
       // Load author info
       if (chapterData) {
@@ -157,13 +163,24 @@ export default function ChapterViewPage() {
             </div>
           </div>
 
-          <Link
-            href={`/stories/${storyId}/write`}
-            className="flex items-center gap-2 px-4 py-2 bg-rose-500 dark:bg-dark-rose text-white rounded-lg font-accent hover:bg-rose-600 dark:hover:bg-rose-400 transition-all"
-          >
-            <Edit3 className="w-4 h-4" />
-            Write Next
-          </Link>
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <Link
+                href={`/stories/${storyId}/write?chapterId=${chapterId}`}
+                className="flex items-center gap-2 px-4 py-2 bg-amethyst-500 dark:bg-amethyst-600 text-white rounded-lg font-accent hover:bg-amethyst-600 dark:hover:bg-amethyst-500 transition-all"
+              >
+                <Edit3 className="w-4 h-4" />
+                Edit
+              </Link>
+            )}
+            <Link
+              href={`/stories/${storyId}/write`}
+              className="flex items-center gap-2 px-4 py-2 bg-rose-500 dark:bg-dark-rose text-white rounded-lg font-accent hover:bg-rose-600 dark:hover:bg-rose-400 transition-all"
+            >
+              <Edit3 className="w-4 h-4" />
+              Write Next
+            </Link>
+          </div>
         </motion.div>
 
         {/* Chapter Content */}

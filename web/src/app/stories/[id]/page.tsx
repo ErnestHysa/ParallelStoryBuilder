@@ -18,10 +18,11 @@ import {
   Copy,
   Check,
   Download,
+  RefreshCw,
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { StoryWithMembers, Chapter, StoryMember, Profile } from '@/types';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, cn, generatePairingCode, formatPairingCode, isOldPairingCodeFormat } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
 import { ShareableCardDialog } from '@/components/ShareableCardDialog';
 
@@ -48,6 +49,7 @@ export default function StoryDetailPage() {
   const [showPairingCode, setShowPairingCode] = useState(false);
   const [showShareCardDialog, setShowShareCardDialog] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   useEffect(() => {
     loadStory();
@@ -108,10 +110,37 @@ export default function StoryDetailPage() {
 
   const copyPairingCode = () => {
     if (story?.pairing_code) {
-      navigator.clipboard.writeText(story.pairing_code);
+      const formattedCode = formatPairingCode(story.pairing_code);
+      navigator.clipboard.writeText(formattedCode);
       setCopied(true);
       toast.success('Pairing code copied!');
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const regeneratePairingCode = async () => {
+    if (!story) return;
+
+    setIsRegenerating(true);
+    try {
+      const supabase = getSupabaseClient();
+      const newCode = generatePairingCode();
+
+      const { error } = await supabase
+        .from('stories')
+        .update({ pairing_code: newCode })
+        .eq('id', story.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setStory({ ...story, pairing_code: newCode });
+      toast.success('Pairing code regenerated!');
+    } catch (error) {
+      console.error('Error regenerating code:', error);
+      toast.error('Failed to regenerate code');
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -244,12 +273,24 @@ export default function StoryDetailPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="bg-white dark:bg-dark-bgSecondary rounded-xl p-4 shadow-elegant"
                 >
-                  <p className="text-sm text-ink-700 dark:text-dark-textSecondary mb-3 font-body">
-                    Share this code with your partner to invite them to your story:
-                  </p>
+                  <div className="flex items-start justify-between mb-3">
+                    <p className="text-sm text-ink-700 dark:text-dark-textSecondary font-body">
+                      Share this code with your partner to invite them to your story:
+                    </p>
+                    {isOldPairingCodeFormat(story.pairing_code) && (
+                      <button
+                        onClick={regeneratePairingCode}
+                        disabled={isRegenerating}
+                        className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-medium transition-colors disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isRegenerating ? 'animate-spin' : ''}`} />
+                        Update to new format
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3">
                     <code className="flex-1 px-4 py-3 bg-cream-100 dark:bg-dark-bgTertiary rounded-lg font-mono text-xl tracking-wider text-ink-950 dark:text-dark-text">
-                      {story.pairing_code}
+                      {formatPairingCode(story.pairing_code)}
                     </code>
                     <button
                       onClick={copyPairingCode}
@@ -258,6 +299,11 @@ export default function StoryDetailPage() {
                       {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                     </button>
                   </div>
+                  {isOldPairingCodeFormat(story.pairing_code) && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                      ⚠️ This story uses an old code format. Consider updating for easier sharing.
+                    </p>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -269,6 +315,7 @@ export default function StoryDetailPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="relative z-10"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-2xl text-ink-950 dark:text-dark-text">Chapters</h2>

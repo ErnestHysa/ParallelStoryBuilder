@@ -16,6 +16,7 @@ import {
   Sparkles,
   Search,
   Filter,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -234,13 +235,22 @@ export default function StoriesPage() {
               Continue writing your love stories together
             </p>
           </div>
-          <Link
-            href="/stories/new"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-amethyst-600 text-white rounded-full font-accent font-medium hover:shadow-elegant hover:scale-105 transition-all duration-300"
-          >
-            <Plus className="w-5 h-5" />
-            New Story
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              href="/join"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-dark-bgSecondary border-2 border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 rounded-full font-accent font-medium hover:shadow-soft hover:scale-105 transition-all duration-300"
+            >
+              <LinkIcon className="w-5 h-5" />
+              Join Story
+            </Link>
+            <Link
+              href="/stories/new"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-amethyst-600 text-white rounded-full font-accent font-medium hover:shadow-elegant hover:scale-105 transition-all duration-300"
+            >
+              <Plus className="w-5 h-5" />
+              New Story
+            </Link>
+          </div>
         </motion.div>
 
         {/* Daily Intention Card */}
@@ -323,13 +333,22 @@ export default function StoriesPage() {
                 ? 'Try a different search or filter'
                 : 'Every great love story starts with a single word'}
             </p>
-            <Link
-              href="/stories/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 dark:bg-dark-rose text-white rounded-full font-accent hover:bg-rose-600 dark:hover:bg-rose-400 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Create Your First Story
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/join"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-dark-bgSecondary border-2 border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 rounded-full font-accent hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+              >
+                <LinkIcon className="w-5 h-5" />
+                Join Partner's Story
+              </Link>
+              <Link
+                href="/stories/new"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-rose-500 dark:bg-dark-rose text-white rounded-full font-accent hover:bg-rose-600 dark:hover:bg-rose-400 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Create Your First Story
+              </Link>
+            </div>
           </motion.div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">

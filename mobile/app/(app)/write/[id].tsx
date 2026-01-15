@@ -18,6 +18,7 @@ import { useStoriesStore } from '@/stores/storiesStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useTokenStore } from '@/stores/tokenStore';
+import { supabase } from '@/lib/supabase';
 import { Story } from '@/lib/types';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -138,11 +139,12 @@ const aiTools = [
 ];
 
 export default function WriteChapterScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, chapterId } = useLocalSearchParams<{ id: string; chapterId?: string }>();
   const { currentStory, fetchStory } = useStoriesStore();
-  const { getStory, addChapter } = useDemoStore();
+  const { getStory, addChapter, updateChapter, getChapters } = useDemoStore();
   const isAuthConfigured = useAuthStore((state) => state.isConfigured);
   const { tokens } = useTokenStore();
+  const isEditMode = !!chapterId;
 
   const {
     draftContent,
@@ -170,16 +172,30 @@ export default function WriteChapterScreen() {
   const [showCharacterSuggestions, setShowCharacterSuggestions] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [isLoadingChapter, setIsLoadingChapter] = useState(false);
+  const [originalChapter, setOriginalChapter] = useState<any>(null);
   const lastSavedContentRef = useRef(draftContent);
 
   useEffect(() => {
     if (id) {
       if (isAuthConfigured) {
         fetchStory(id);
+        if (chapterId) {
+          loadChapterForEdit(chapterId as string);
+        }
       } else {
         const demoStory = getStory(id);
         if (demoStory) {
           setStory(demoStory);
+        }
+        if (chapterId) {
+          const chapters = getChapters(id);
+          const chapter = chapters.find((c: any) => c.id === chapterId);
+          if (chapter) {
+            setOriginalChapter(chapter);
+            setDraftContent(chapter.content);
+            setContextSnippet(chapter.context_snippet || '');
+          }
         }
       }
     }
@@ -210,7 +226,37 @@ export default function WriteChapterScreen() {
       clearInterval(saveInterval);
       reset();
     };
-  }, [id, isAuthConfigured, saveDraft, reset, fetchStory, getStory]);
+  }, [id, isAuthConfigured, saveDraft, reset, fetchStory, getStory, chapterId, getChapters]);
+
+  const loadChapterForEdit = async (cid: string) => {
+    setIsLoadingChapter(true);
+    try {
+      const { data: chapterData, error } = await supabase
+        .from('chapters')
+        .select('*')
+        .eq('id', cid)
+        .eq('story_id', id)
+        .single();
+
+      if (error) throw error;
+      if (!chapterData) {
+        Alert.alert('Error', 'Chapter not found');
+        router.back();
+        return;
+      }
+
+      setOriginalChapter(chapterData);
+      setDraftContent(chapterData.content);
+      setContextSnippet(chapterData.context_snippet || '');
+      lastSavedContentRef.current = chapterData.content;
+    } catch (error) {
+      console.error('Error loading chapter:', error);
+      Alert.alert('Error', 'Failed to load chapter');
+      router.back();
+    } finally {
+      setIsLoadingChapter(false);
+    }
+  };
 
   const displayStory = isAuthConfigured ? currentStory : story;
 
@@ -300,32 +346,121 @@ export default function WriteChapterScreen() {
 
     setLocalError('');
     try {
+      const contentToSubmit = showPreview && (handleEnhance as any).demoEnhanced
+        ? (handleEnhance as any).demoEnhanced
+        : draftContent;
+
       if (isAuthConfigured) {
-        await submitChapter(id);
+        if (isEditMode && chapterId) {
+          // EDIT MODE: Update existing chapter
+          const { data: { user } } = await supabase.auth.getUser();
+
+          if (!user) {
+            Alert.alert('Error', 'You must be logged in');
+            return;
+          }
+
+          // Verify ownership
+          const { data: chapter } = await supabase
+            .from('chapters')
+            .select('author_id')
+            .eq('id', chapterId)
+            .single();
+
+          if (!chapter || chapter.author_id !== user.id) {
+            Alert.alert('Error', 'You can only edit your own chapters');
+            return;
+          }
+
+          // Update the chapter
+          const { error: updateError } = await supabase
+            .from('chapters')
+            .update({
+              content: contentToSubmit,
+              context_snippet: contextSnippet || null,
+            })
+            .eq('id', chapterId);
+
+          if (updateError) throw updateError;
+
+          Alert.alert(
+            'Chapter Updated!',
+            'Your chapter has been updated.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/(app)');
+                  }
+                },
+              },
+            ]
+          );
+        } else {
+          // CREATE MODE: Create new chapter
+          await submitChapter(id);
+          Alert.alert(
+            'Chapter Submitted!',
+            'Your chapter has been added to the story.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Check if navigation is possible
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/(app)');
+                  }
+                },
+              },
+            ]
+          );
+        }
       } else {
-        // Demo mode: add chapter to demo store
-        const contentToSubmit = showPreview && (handleEnhance as any).demoEnhanced
-          ? (handleEnhance as any).demoEnhanced
-          : draftContent;
-        addChapter(id, contentToSubmit);
+        // Demo mode: add or update chapter in demo store
+        if (isEditMode && chapterId) {
+          updateChapter(id, chapterId, contentToSubmit);
+          Alert.alert(
+            'Chapter Updated!',
+            'Your chapter has been updated.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/(app)');
+                  }
+                },
+              },
+            ]
+          );
+        } else {
+          addChapter(id, contentToSubmit);
+          Alert.alert(
+            'Chapter Submitted!',
+            'Your chapter has been added to the story.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Check if navigation is possible
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/(app)');
+                  }
+                },
+              },
+            ]
+          );
+        }
       }
-      Alert.alert(
-        'Chapter Submitted!',
-        'Your chapter has been added to the story.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Check if navigation is possible
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/(app)');
-              }
-            },
-          },
-        ]
-      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to submit chapter';
       setLocalError(message);
@@ -357,7 +492,7 @@ export default function WriteChapterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.header, { backgroundColor: theme.color }]}>
-          <Text style={styles.title}>Write Chapter</Text>
+          <Text style={styles.title}>{isEditMode ? 'Edit Chapter' : 'Write Chapter'}</Text>
           <Text style={styles.subtitle}>{displayStory.title}</Text>
           <Text style={styles.themeLabel}>{theme.emoji} {theme.label}</Text>
 
@@ -553,12 +688,12 @@ export default function WriteChapterScreen() {
           <View style={styles.actionButtons}>
             <Button
               onPress={handleSubmit}
-              isLoading={isSubmitting}
+              isLoading={isSubmitting || isLoadingChapter}
               disabled={!draftContent.trim()}
-              accessibilityLabel="Submit chapter"
-              accessibilityHint="Submit your chapter to the story"
+              accessibilityLabel={isEditMode ? "Update chapter" : "Submit chapter"}
+              accessibilityHint={isEditMode ? "Update your chapter" : "Submit your chapter to the story"}
             >
-              Submit Chapter
+              {isSubmitting ? 'Saving...' : isEditMode ? 'Update Chapter' : 'Submit Chapter'}
             </Button>
 
             <Button

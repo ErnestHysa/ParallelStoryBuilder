@@ -66,11 +66,25 @@ const PRESENCE_STATES = {
   offline: { color: '#9E9E9E', text: 'Offline', icon: '⚫' },
 };
 
+// Pairing code utilities
+const formatPairingCode = (code: string): string => {
+  return code.replace(/-/g, '');
+};
+
+const isOldPairingCodeFormat = (code: string): boolean => {
+  return code.includes('-') || /[a-zA-Z]/.test(code);
+};
+
+const generatePairingCode = (): string => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
 export default function StoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { currentStory, isLoading, fetchStory, subscribeToStory, unsubscribe, isConfigured } = useStoriesStore();
   const { getStory, getChapters } = useDemoStore();
   const isAuthConfigured = useAuthStore((state) => state.isConfigured);
+  const { profile } = useAuthStore((state) => ({ profile: state.profile }));
   const { streak } = useGamificationStore();
 
   const [story, setStory] = useState<Story | null>(null);
@@ -198,11 +212,28 @@ export default function StoryDetailScreen() {
   };
 
   const handleChapterPress = (chapter: Chapter) => {
+    const canEdit = profile && chapter.author_id === profile.id;
+    const buttons: Array<{ text: string; onPress?: () => void; style?: 'default' | 'cancel' | 'destructive' }> = [
+      { text: 'Close', style: 'cancel' },
+    ];
+
+    // Add edit button for chapter owner
+    if (canEdit) {
+      buttons.unshift({
+        text: 'Edit Chapter',
+        onPress: () => router.push(`/write/${id}?chapterId=${chapter.id}`),
+      });
+    }
+
     Alert.alert(
       `Chapter ${chapter.chapter_number}`,
       chapter.content?.substring(0, 200) + (chapter.content?.length > 200 ? '...' : ''),
-      [{ text: 'Close' }]
+      buttons
     );
+  };
+
+  const handleEditChapter = (chapterId: string) => {
+    router.push(`/write/${id}?chapterId=${chapterId}`);
   };
 
   const handleExportStory = () => {
@@ -224,7 +255,7 @@ export default function StoryDetailScreen() {
             </View>
           </View>
           <Text style={styles.meta}>
-            {theme.label} • Code: {displayStory.pairing_code}
+            {theme.label} • Code: {formatPairingCode(displayStory.pairing_code)}
           </Text>
 
           {/* Streak Display */}
@@ -282,7 +313,7 @@ export default function StoryDetailScreen() {
           ) : (
             <View style={styles.statusContent}>
               <Text style={styles.statusTitle}>Share this code to invite a partner</Text>
-              <Text style={styles.pairingCode}>{displayStory.pairing_code}</Text>
+              <Text style={styles.pairingCode}>{formatPairingCode(displayStory.pairing_code)}</Text>
             </View>
           )}
         </Card>
@@ -360,34 +391,50 @@ export default function StoryDetailScreen() {
           ) : (
             <FlatList
               data={displayChapters}
-              renderItem={({ item }) => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => handleChapterPress(item)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Read chapter ${item.chapter_number}`}
-                >
-                  <Card variant="elevated" style={styles.chapterCard}>
-                    <View style={styles.chapterHeader}>
-                      <Text style={styles.chapterNumber}>Chapter {item.chapter_number}</Text>
-                      {item.ai_enhanced_content && (
-                        <View style={styles.aiBadge}>
-                          <Text style={styles.aiBadgeText}>✨ AI Enhanced</Text>
+              renderItem={({ item }) => {
+                const canEdit = profile && item.author_id === profile.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => handleChapterPress(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Read chapter ${item.chapter_number}`}
+                  >
+                    <Card variant="elevated" style={styles.chapterCard}>
+                      <View style={styles.chapterHeader}>
+                        <Text style={styles.chapterNumber}>Chapter {item.chapter_number}</Text>
+                        <View style={styles.chapterBadges}>
+                          {item.ai_enhanced_content && (
+                            <View style={styles.aiBadge}>
+                              <Text style={styles.aiBadgeText}>✨ AI Enhanced</Text>
+                            </View>
+                          )}
+                          {item.media && item.media.length > 0 && (
+                            <View style={styles.mediaBadge}>
+                              <Text style={styles.mediaBadgeText}>📷 {item.media.length}</Text>
+                            </View>
+                          )}
                         </View>
-                      )}
-                      {item.media && item.media.length > 0 && (
-                        <View style={styles.mediaBadge}>
-                          <Text style={styles.mediaBadgeText}>📷 {item.media.length}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.chapterPreview} numberOfLines={4}>
-                      {item.ai_enhanced_content || item.content}
-                    </Text>
-                    <Text style={styles.authorLabel}>By {getAuthorName(item.author_id)}</Text>
-                  </Card>
-                </Pressable>
-              )}
+                      </View>
+                      <Text style={styles.chapterPreview} numberOfLines={4}>
+                        {item.ai_enhanced_content || item.content}
+                      </Text>
+                      <View style={styles.chapterFooter}>
+                        <Text style={styles.authorLabel}>By {getAuthorName(item.author_id)}</Text>
+                        {canEdit && (
+                          <TouchableOpacity
+                            style={styles.editButton}
+                            onPress={() => handleEditChapter(item.id)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          >
+                            <Text style={styles.editButtonText}>✏️ Edit</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </Card>
+                  </Pressable>
+                );
+              }}
               keyExtractor={(item) => item.id}
               showsVerticalScrollIndicator={false}
             />
@@ -800,6 +847,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: 8,
+  },
+  chapterBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  chapterFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: COLORS.accent + '20',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+  },
+  editButtonText: {
+    fontSize: 12,
+    color: COLORS.accent,
+    fontWeight: '600',
   },
   mediaPreview: {
     flexDirection: 'row',

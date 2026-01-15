@@ -66,15 +66,24 @@ export function truncate(text: string, maxLength: number): string {
 
 /**
  * Generate pairing code for stories
+ * Returns a 6-digit numeric code for easy entry across platforms
  */
 export function generatePairingCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No ambiguous characters
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    if (i > 0 && i % 2 === 0) code += '-';
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Format pairing code for display (removes dashes if present in old format)
+ */
+export function formatPairingCode(code: string): string {
+  return code.replace(/-/g, '');
+}
+
+/**
+ * Check if pairing code is in old format (has dashes or letters)
+ */
+export function isOldPairingCodeFormat(code: string): boolean {
+  return code.includes('-') || /[a-zA-Z]/.test(code);
 }
 
 /**

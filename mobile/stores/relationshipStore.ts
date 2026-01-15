@@ -104,6 +104,7 @@ interface RelationshipState {
   setDailyIntention: (intention: string) => Promise<void>;
   completeDailyIntention: () => Promise<void>;
   markIntentionComplete: () => Promise<void>;
+  fetchDailyIntention: () => Promise<void>;
   fetchMilestones: () => Promise<void>;
   addMilestone: (milestone: Omit<Milestone, 'id' | 'relationship_id' | 'date_achieved'>) => Promise<string>;
   fetchSharedMilestones: () => Promise<void>;

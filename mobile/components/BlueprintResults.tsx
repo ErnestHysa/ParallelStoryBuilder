@@ -134,7 +134,7 @@ export function BlueprintResults({ onComplete }: BlueprintResultsProps) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText>Loading your results...</Text>
+        <Text style={styles.loadingText}>Loading your results...</Text>
       </View>
     );
   }

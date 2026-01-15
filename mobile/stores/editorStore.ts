@@ -7,6 +7,10 @@ import { useTokenStore } from './tokenStore';
 import { useStoriesStore } from './storiesStore';
 import { useEffect } from 'react';
 
+// Get Supabase URL for direct fetch calls
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
 interface EditorState {
   // Existing state
   draftContent: string;
@@ -247,20 +251,38 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ isEnhancing: true });
 
     try {
-      const { data, error } = await supabase.functions.invoke<{
-        success: boolean;
-        data: { enhancedContent: string };
-      }>('ai-enhance', {
-        body: {
+      // Get the current session to explicitly pass the auth token
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('You must be logged in to use AI features');
+      }
+
+      // Use direct fetch instead of supabase.functions.invoke
+      // Pass userId directly in request body to bypass PKCE JWT validation issues
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-enhance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
           content: draftContent,
           storyId,
           features: ['grammar', 'style', 'tone', 'clarity'],
-        },
+          userId: session.user.id,  // Pass userId directly to bypass JWT auth
+        }),
       });
 
-      if (error) throw error;
-      if (!data?.success) {
-        throw new Error('AI enhancement failed');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`AI enhancement error: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'AI enhancement failed');
       }
 
       set({

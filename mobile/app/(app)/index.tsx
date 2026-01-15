@@ -106,11 +106,11 @@ export default function HomeScreen() {
     }
   };
 
-  const getStreakCount = () => {
-    if (typeof streak === 'object') {
-      return streak.current || streak;
+  const getStreakCount = (): number => {
+    if (typeof streak === 'object' && streak !== null) {
+      return streak.current ?? 0;
     }
-    return streak;
+    return typeof streak === 'number' ? streak : 0;
   };
 
   const formatDate = (dateString: string) => {

@@ -10,6 +10,7 @@ export { usePresenceStore } from './presenceStore';
 export { useRelationshipStore } from './relationshipStore';
 export { useNotificationsStore } from './notificationsStore';
 export { useSettingsStore } from './settingsStore';
+export { useABTestStore } from './abTestStore.tsx';
 
 // Store types
 export type { AuthState } from './authStore';
@@ -24,3 +25,4 @@ export type { PresenceState } from './presenceStore';
 export type { RelationshipState } from './relationshipStore';
 export type { NotificationsState } from './notificationsStore';
 export type { SettingsState } from './settingsStore';
+export type { ABTestState } from './abTestStore.tsx';

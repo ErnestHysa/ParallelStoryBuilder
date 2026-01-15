@@ -12,6 +12,9 @@ export interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   blueprint_data?: QuizResult | null;
+  referral_code?: string | null;
+  referred_by?: string | null;
+  referral_count?: number;
   created_at: string;
 }
 
@@ -188,6 +191,21 @@ export type Database = {
         Row: AIUsageRecord;
         Insert: Omit<AIUsageRecord, 'id' | 'created_at'>;
         Update: Partial<Omit<AIUsageRecord, 'id' | 'created_at'>>;
+      };
+      referrals: {
+        Row: Referral;
+        Insert: Omit<Referral, 'id' | 'created_at'>;
+        Update: Partial<Referral>;
+      };
+      gift_codes: {
+        Row: GiftCode;
+        Insert: Omit<GiftCode, 'id' | 'created_at'>;
+        Update: Partial<GiftCode>;
+      };
+      gifts: {
+        Row: Gift;
+        Insert: Omit<Gift, 'id' | 'created_at'>;
+        Update: Partial<Gift>;
       };
     };
   };
@@ -479,4 +497,55 @@ export interface AIUsageRecord {
   cost?: number;
   tokens_used?: number;
   created_at: string;
+}
+
+// A/B Testing
+export interface ABTestAssignment {
+  experiment_id: string;
+  variant_id: string;
+  assigned_at: string;
+}
+
+// Referrals
+export interface Referral {
+  id: string;
+  referrer_id: string;
+  referred_user_id: string;
+  referral_code: string;
+  status: 'pending' | 'completed' | 'expired';
+  reward_amount: number;
+  completed_at?: string;
+  created_at: string;
+}
+
+// Gifts
+export interface Gift {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  amount: number;
+  message?: string;
+  created_at: string;
+  claimed_at?: string;
+}
+
+export interface GiftCode {
+  id: string;
+  code: string;
+  amount: number;
+  purchaser_id: string;
+  recipient_email?: string;
+  message?: string;
+  redeemed: boolean;
+  redeemed_by?: string;
+  redeemed_at?: string;
+  expires_at: string;
+  created_at: string;
+}
+
+// Profile extensions for referral
+export interface ProfileExtended extends Profile {
+  referral_code?: string;
+  referred_by?: string;
+  referral_count?: number;
 }

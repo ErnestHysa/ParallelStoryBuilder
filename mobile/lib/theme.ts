@@ -40,7 +40,9 @@ export const theme = {
 
 export const COLORS = {
   primary: '#E91E63',
+  primaryLight: '#FCE4EC',
   secondary: '#9C27B0',
+  accent: '#FFC107',
   background: '#FAFAFA',
   surface: '#FFFFFF',
   text: '#212121',

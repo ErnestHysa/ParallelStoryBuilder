@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Save,
@@ -15,6 +15,7 @@ import {
   Image,
   Mic,
   Clock,
+  Pencil,
 } from 'lucide-react';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -26,6 +27,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import RichTextEditor from '@/components/RichTextEditor';
 
 const DRAFT_STORAGE_KEY = (storyId: string) => `parallel-draft-${storyId}`;
+const EDIT_DRAFT_STORAGE_KEY = (storyId: string, chapterId: string) => `parallel-edit-draft-${storyId}-${chapterId}`;
 const MIN_CONTENT_LENGTH = 50;
 
 const aiEnhancements = [
@@ -46,9 +48,11 @@ const writingPrompts = [
 export default function WriteChapterPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile, isLoading: isLoadingAuth } = useAuthStore();
   const editorStore = useEditorStore();
   const storyId = params.id as string;
+  const chapterId = searchParams.get('chapterId'); // Get chapter ID for edit mode
 
   const [story, setStory] = useState<Story | null>(null);
   const [content, setContent] = useState('');
@@ -63,6 +67,9 @@ export default function WriteChapterPage() {
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [enhancedContent, setEnhancedContent] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoadingChapter, setIsLoadingChapter] = useState(false);
+  const [originalChapter, setOriginalChapter] = useState<Chapter | null>(null);
 
   // Use ref to track last saved content for auto-save comparison
   const lastSavedContentRef = useRef('');
@@ -75,16 +82,22 @@ export default function WriteChapterPage() {
       checkAuth();
     } else if (profile) {
       loadStory();
-      loadChapterCount();
+      if (chapterId) {
+        // Load existing chapter for editing
+        loadChapterForEdit(chapterId);
+      } else {
+        loadChapterCount();
+      }
     }
-  }, [storyId, profile, isLoadingAuth]);
+  }, [storyId, profile, isLoadingAuth, chapterId]);
 
   // Load draft from localStorage on mount
   useEffect(() => {
     if (!storyId) return;
 
     try {
-      const draftKey = DRAFT_STORAGE_KEY(storyId);
+      // In edit mode, load the edit draft; otherwise load the new chapter draft
+      const draftKey = chapterId ? EDIT_DRAFT_STORAGE_KEY(storyId, chapterId) : DRAFT_STORAGE_KEY(storyId);
       const savedDraft = localStorage.getItem(draftKey);
       if (savedDraft) {
         const draft = JSON.parse(savedDraft);
@@ -100,14 +113,14 @@ export default function WriteChapterPage() {
     } catch (error) {
       console.error('Error loading draft from localStorage:', error);
     }
-  }, [storyId]);
+  }, [storyId, chapterId]);
 
   // Save draft to localStorage whenever content or context changes
   useEffect(() => {
     if (!storyId) return;
 
     try {
-      const draftKey = DRAFT_STORAGE_KEY(storyId);
+      const draftKey = chapterId ? EDIT_DRAFT_STORAGE_KEY(storyId, chapterId) : DRAFT_STORAGE_KEY(storyId);
       const draft = {
         content,
         contextSnippet,
@@ -117,7 +130,7 @@ export default function WriteChapterPage() {
     } catch (error) {
       console.error('Error saving draft to localStorage:', error);
     }
-  }, [storyId, content, contextSnippet]);
+  }, [storyId, chapterId, content, contextSnippet]);
 
   // Auto-save functionality
   useEffect(() => {
@@ -212,6 +225,40 @@ export default function WriteChapterPage() {
       setChapterNumber(((data?.[0] as any)?.chapter_number ?? 0) + 1);
     } catch (error) {
       console.error('Error loading chapter count:', error);
+    }
+  };
+
+  const loadChapterForEdit = async (id: string) => {
+    setIsLoadingChapter(true);
+    try {
+      const supabase = getSupabaseClient();
+      const { data: chapterData, error } = await supabase
+        .from('chapters')
+        .select('*')
+        .eq('id', id)
+        .eq('story_id', storyId)
+        .single();
+
+      if (error) throw error;
+      if (!chapterData) {
+        toast.error('Chapter not found');
+        router.push(`/stories/${storyId}`);
+        return;
+      }
+
+      const chapter = chapterData as unknown as Chapter;
+      setOriginalChapter(chapter);
+      setContent(chapter.content);
+      setContextSnippet(chapter.context_snippet || '');
+      setChapterNumber(chapter.chapter_number);
+      setIsEditMode(true);
+      lastSavedContentRef.current = chapter.content;
+    } catch (error) {
+      console.error('Error loading chapter:', error);
+      toast.error('Failed to load chapter');
+      router.push(`/stories/${storyId}`);
+    } finally {
+      setIsLoadingChapter(false);
     }
   };
 
@@ -325,6 +372,53 @@ export default function WriteChapterPage() {
         return;
       }
 
+      // EDIT MODE: Update existing chapter
+      if (isEditMode && chapterId) {
+        // Verify ownership before updating
+        const { data: chapter, error: fetchError } = await supabase
+          .from('chapters')
+          .select('author_id')
+          .eq('id', chapterId)
+          .maybeSingle();
+
+        if (fetchError) throw fetchError;
+        const chapterData = chapter as { author_id: string } | null;
+        if (!chapterData) throw new Error('Chapter not found');
+        if (chapterData.author_id !== userId) {
+          toast.error('You can only edit your own chapters');
+          setIsSaving(false);
+          return;
+        }
+
+        // Update the chapter
+        const { error: updateError } = await supabase
+          .from('chapters')
+          .update({
+            content: content.trim(),
+            context_snippet: contextSnippet.trim() || null,
+          })
+          .eq('id', chapterId);
+
+        if (updateError) throw updateError;
+
+        // Update state after successful save
+        setLastSaved(Date.now());
+        setHasUnsavedChanges(false);
+        lastSavedContentRef.current = content;
+
+        // Clear localStorage draft after successful save
+        try {
+          localStorage.removeItem(EDIT_DRAFT_STORAGE_KEY(storyId, chapterId));
+        } catch (e) {
+          // Ignore storage errors
+        }
+
+        toast.success('Chapter updated!');
+        router.push(`/stories/${storyId}/chapter/${chapterId}`);
+        return;
+      }
+
+      // CREATE MODE: Create new chapter
       // Fetch the latest chapter number at this moment to handle race conditions
       const { data: lastChapter, error: fetchError } = await supabase
         .from('chapters')
@@ -495,9 +589,24 @@ export default function WriteChapterPage() {
             <div>
               <p className="text-sm text-ink-600 dark:text-dark-textMuted font-body">
                 {story?.title} • Chapter {chapterNumber}
+                {isEditMode && ' • Editing'}
               </p>
-              <h1 className="font-display text-2xl text-ink-950 dark:text-dark-text">
-                {previewMode ? 'Preview' : 'Write Your Chapter'}
+              <h1 className="font-display text-2xl text-ink-950 dark:text-dark-text flex items-center gap-2">
+                {isLoadingChapter ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-5 h-5 border-2 border-rose-200 dark:border-rose-900 border-t-rose-500 dark:border-t-rose-400 rounded-full"
+                    />
+                    Loading...
+                  </>
+                ) : previewMode ? 'Preview' : (
+                  <>
+                    {isEditMode ? <Pencil className="w-5 h-5" /> : null}
+                    {isEditMode ? 'Edit Chapter' : 'Write Your Chapter'}
+                  </>
+                )}
               </h1>
             </div>
           </div>
@@ -542,7 +651,7 @@ export default function WriteChapterPage() {
             {/* Save button */}
             <button
               onClick={handleSave}
-              disabled={isSaving || isAutoSaving || !content.trim()}
+              disabled={isSaving || isAutoSaving || isLoadingChapter || !content.trim()}
               className="flex items-center gap-2 px-4 py-2 bg-rose-500 dark:bg-dark-rose text-white rounded-lg font-accent hover:bg-rose-600 dark:hover:bg-rose-400 disabled:opacity-50 transition-all"
             >
               {isSaving || isAutoSaving ? (
@@ -557,7 +666,7 @@ export default function WriteChapterPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Save
+                  {isEditMode ? 'Update' : 'Save'}
                 </>
               )}
             </button>
