@@ -47,7 +47,14 @@
       "Bash(git push:*)",
       "Bash(npm run build)",
       "Skill(superpowers:using-superpowers)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "Bash(npm run build --prefix web)",
+      "Bash(npm run tsc:*)",
+      "Bash(npm run --prefix mobile:*)",
+      "Bash(npm run lint:*)",
+      "Bash(netstat:*)",
+      "Bash(curl:*)",
+      "Bash(xxd:*)"
     ]
   }
 }

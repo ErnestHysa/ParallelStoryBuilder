@@ -12,10 +12,12 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useTokenStore } from '@/stores/tokenStore';
 import { router } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { GiftSparksDialog } from '@/components/GiftSparksDialog';
 import { theme } from '@/lib/theme';
+import { COLORS } from '@/lib/theme';
 
 const PURCHASE_OPTIONS = [
   { id: 'starter', name: 'Starter Pack', tokens: 50, price: 0.99, description: 'Perfect for beginners' },
@@ -36,6 +38,7 @@ export default function WalletScreen() {
   const { balance, tokens, setBalance, deductTokens } = useTokenStore();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [giftDialogVisible, setGiftDialogVisible] = useState(false);
 
   useEffect(() => {
     loadTransactions();
@@ -123,6 +126,21 @@ export default function WalletScreen() {
           <Text style={styles.sectionTitle}>Get More Tokens</Text>
           <Text style={styles.sectionSubtitle}>Unlock premium features and boost your creativity</Text>
 
+          {/* Gift Sparks Button */}
+          <TouchableOpacity
+            style={styles.giftButton}
+            onPress={() => setGiftDialogVisible(true)}
+          >
+            <View style={styles.giftButtonContent}>
+              <MaterialIcons name="card-giftcard" size={28} color="#E91E63" />
+              <View style={styles.giftTextContainer}>
+                <Text style={styles.giftTitle}>Gift Sparks</Text>
+                <Text style={styles.giftDescription}>Send tokens to someone special</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#BDBDBD" />
+            </View>
+          </TouchableOpacity>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -186,6 +204,16 @@ export default function WalletScreen() {
           </Card>
         </View>
       </ScrollView>
+
+      {/* Gift Sparks Dialog */}
+      <GiftSparksDialog
+        visible={giftDialogVisible}
+        onClose={() => setGiftDialogVisible(false)}
+        userId={profile?.id || ''}
+        onGiftPurchased={(code, amount) => {
+          Alert.alert('Gift Created!', `Your gift code is: ${code}\n\nShare it with someone special!`);
+        }}
+      />
     </View>
   );
 }
