@@ -6,10 +6,10 @@ ALTER TABLE chapters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inspirations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
--- Users can view their own profile
-CREATE POLICY "Users can view own profile"
+-- Authenticated users can view profiles (needed for showing partner names)
+CREATE POLICY "Authenticated users can view profiles"
   ON profiles FOR SELECT
-  USING (auth.uid() = id);
+  USING (auth.role() = 'authenticated');
 
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile"
@@ -48,43 +48,25 @@ CREATE POLICY "Story creator can delete story"
   USING (created_by = auth.uid());
 
 -- Story members policies
--- Story members can view membership for stories they belong to
-CREATE POLICY "Members can view story memberships"
+-- Authenticated users can view story_members (needed for showing all members)
+CREATE POLICY "Authenticated users can view story_members"
   ON story_members FOR SELECT
-  USING (
-    user_id = auth.uid()
-    OR story_id IN (
-      SELECT story_id FROM story_members WHERE user_id = auth.uid()
-    )
-  );
+  USING (auth.role() = 'authenticated');
 
--- Authenticated users can join stories (if not already member)
-CREATE POLICY "Users can join stories"
+-- Authenticated users can join stories
+CREATE POLICY "Authenticated users can insert story_members"
   ON story_members FOR INSERT
-  WITH CHECK (
-    auth.uid() = user_id
-    AND NOT EXISTS (
-      SELECT 1 FROM story_members
-      WHERE story_id = story_members.story_id
-      AND user_id = auth.uid()
-    )
-  );
+  WITH CHECK (auth.role() = 'authenticated');
 
 -- Members can leave stories
-CREATE POLICY "Members can leave stories"
+CREATE POLICY "Authenticated users can delete story_members"
   ON story_members FOR DELETE
-  USING (auth.uid() = user_id);
+  USING (auth.role() = 'authenticated');
 
--- Creator can update member roles
-CREATE POLICY "Creator can update members"
+-- Authenticated users can update story_members
+CREATE POLICY "Authenticated users can update story_members"
   ON story_members FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM stories
-      WHERE stories.id = story_members.story_id
-      AND stories.created_by = auth.uid()
-    )
-  );
+  USING (auth.role() = 'authenticated');
 
 -- Chapters policies
 -- Story members can view chapters for their stories
