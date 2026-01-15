@@ -403,6 +403,7 @@ export default function StoryDetailPage() {
           theme: story.theme,
           created_at: story.created_at,
           pairing_code: story.pairing_code,
+          created_by: story.created_by,
         }}
         chapters={chapters.map(chapter => ({
           id: chapter.id,
@@ -412,6 +413,8 @@ export default function StoryDetailPage() {
           author_id: chapter.author_id,
           created_at: chapter.created_at,
         }))}
+        members={story.members}
+        currentUserId={story.created_by}
       />
     </>
   );

@@ -492,51 +492,29 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
     }
 
     try {
-      const { data: storyData, error: storyError } = await supabase
-        .from('stories')
-        .select('*')
-        .eq('pairing_code', pairingCode)
-        .single();
+      // Use the SECURITY DEFINER function that handles the entire join flow
+      // This bypasses all RLS issues and prevents infinite recursion
+      const { data: result, error: joinError } = await supabase
+        .rpc('join_story_by_pairing_code', {
+          p_pairing_code: pairingCode,
+          p_user_id: user.id,
+          p_role: 'partner',
+          p_turn_order: 2
+        });
 
-      if (storyError) throw storyError;
-
-      if (!storyData) {
-        throw new Error('Invalid pairing code');
+      if (joinError) {
+        throw new Error(joinError.message || 'Failed to join story');
       }
 
-      // Check if user is already a member
-      const { data: existingMember } = await supabase
-        .from('story_members')
-        .select('*')
-        .eq('story_id', storyData.id)
-        .eq('user_id', user.id)
-        .single();
+      // Parse the JSON result from the function
+      const joinResult = result as unknown as { success: boolean; story_id?: string; story_title?: string; error?: string };
 
-      if (existingMember) {
-        throw new Error('Already a member of this story');
+      if (!joinResult.success) {
+        throw new Error(joinResult.error || 'Failed to join story');
       }
 
-      // Check if story already has two members
-      const { data: allMembers } = await supabase
-        .from('story_members')
-        .select('*')
-        .eq('story_id', storyData.id);
-
-      if (allMembers && allMembers.length >= 2) {
-        throw new Error('Story already has two members');
-      }
-
-      const userStory = {
-        story_id: storyData.id,
-        user_id: user.id,
-        role: 'partner' as const,
-        turn_order: 2,
-      };
-
-      // Try to join online first
-      await supabase
-        .from('story_members')
-        .insert(userStory);
+      const storyId = joinResult.story_id!;
+      const storyTitle = joinResult.story_title!;
 
       // Create relationship link
       const { data: relationshipData } = await supabase
@@ -549,7 +527,7 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
         await supabase
           .from('story_relationships')
           .insert({
-            story_id: storyData.id,
+            story_id: storyId,
             user_id: user.id,
             partner_id: relationshipData.partner_id,
             linked_at: new Date().toISOString(),
@@ -567,23 +545,24 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
           *,
           profile:profiles(*)
         `)
-        .eq('story_id', storyData.id);
+        .eq('story_id', storyId);
 
       const { data: mediaData } = await supabase
         .from('media_attachments')
         .select('*')
-        .eq('story_id', storyData.id);
+        .eq('story_id', storyId);
 
       const storyWithMembers = {
-        ...storyData,
+        id: storyId,
+        title: storyTitle,
         members: membersData || [],
         mediaAttachments: mediaData || [],
       };
 
       // Set as current story immediately
-      get().setCurrentStory(storyWithMembers);
+      get().setCurrentStory(storyWithMembers as StoryWithMembers);
 
-      return storyWithMembers;
+      return storyWithMembers as StoryWithMembers;
 
     } catch (error: any) {
       if (error.code === 'PGRST116' || error.code === '429' || !isSupabaseConfigured()) {

@@ -46,59 +46,33 @@ export default function JoinStoryPage() {
     try {
       const supabase = getSupabaseClient();
 
-      // Look up story by pairing code
-      const { data: storyData, error: storyError } = await supabase
-        .from('stories')
-        .select('*')
-        .eq('pairing_code', pairingCode.trim())
-        .single();
+      // Use the SECURITY DEFINER function that handles the entire join flow
+      // This bypasses all RLS issues and prevents infinite recursion
+      const { data: result, error: joinError } = await supabase
+        .rpc('join_story_by_pairing_code', {
+          p_pairing_code: pairingCode.trim(),
+          p_user_id: user.id,
+          p_role: 'partner',
+          p_turn_order: 2
+        });
 
-      if (storyError || !storyData) {
-        setError('Invalid pairing code. Please check and try again.');
+      if (joinError) {
+        setError(joinError.message || 'Failed to join story');
         setIsLoading(false);
         return;
       }
 
-      // Type assertion for storyData
-      const story = storyData as unknown as { id: string; title: string; pairing_code: string };
+      // Parse the JSON result from the function
+      const joinResult = result as unknown as { success: boolean; story_id?: string; story_title?: string; error?: string };
 
-      // Check if user is already a member
-      const { data: existingMember } = await supabase
-        .from('story_members')
-        .select('*')
-        .eq('story_id', story.id)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingMember) {
-        setError('You are already a member of this story.');
+      if (!joinResult.success) {
+        setError(joinResult.error || 'Failed to join story');
         setIsLoading(false);
         return;
       }
 
-      // Check if story already has two members
-      const { data: allMembers } = await supabase
-        .from('story_members')
-        .select('*')
-        .eq('story_id', story.id);
-
-      if (allMembers && allMembers.length >= 2) {
-        setError('This story already has two members.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Add user as partner
-      const { error: insertError } = await supabase
-        .from('story_members')
-        .insert([{
-          story_id: story.id,
-          user_id: user.id,
-          role: 'partner',
-          turn_order: 2,
-        }] as any);
-
-      if (insertError) throw insertError;
+      const storyId = joinResult.story_id!;
+      const storyTitle = joinResult.story_title!;
 
       // Create relationship link if user has a partner relationship
       const { data: relationshipData } = await supabase
@@ -111,7 +85,7 @@ export default function JoinStoryPage() {
         await supabase
           .from('story_relationships')
           .insert([{
-            story_id: story.id,
+            story_id: storyId,
             user_id: user.id,
             partner_id: (relationshipData as any).partner_id,
             linked_at: new Date().toISOString(),
@@ -119,12 +93,12 @@ export default function JoinStoryPage() {
       }
 
       // Success!
-      setJoinedStory({ id: story.id, title: story.title });
-      toast.success(`Successfully joined "${story.title}"!`);
+      setJoinedStory({ id: storyId, title: storyTitle });
+      toast.success(`Successfully joined "${storyTitle}"!`);
 
       // Redirect after a short delay
       setTimeout(() => {
-        router.push(`/stories/${story.id}`);
+        router.push(`/stories/${storyId}`);
       }, 1500);
 
     } catch (err: unknown) {

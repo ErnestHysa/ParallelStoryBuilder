@@ -569,6 +569,8 @@ export default function StoryDetailScreen() {
         onClose={() => setShowShareCardDialog(false)}
         story={displayStory}
         chapters={displayChapters}
+        members={currentStory?.members || []}
+        currentUserId={profile?.id}
       />
     </View>
   );
