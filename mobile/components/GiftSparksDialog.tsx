@@ -5,7 +5,7 @@
  * Users can buy spark packs as gift codes or send directly to another user.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,8 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
@@ -24,6 +24,7 @@ import {
   SPARK_PACKS,
   getTotalSparks,
   purchaseGiftCode,
+  sendGiftDirectly,
   type SparkPackSize,
 } from '@/lib/giftSparks';
 import { COLORS } from '@/lib/theme';
@@ -85,18 +86,29 @@ export function GiftSparksDialog({
 
       if (result) {
         onGiftPurchased?.(result.code, result.amount);
+        const giftDetails = `Your gift code is: ${result.code}\n\n${result.amount} sparks can be redeemed using this code.`;
         Alert.alert(
           'Gift Code Created!',
-          `Your gift code is: ${result.code}\n\n${result.amount} sparks can be redeemed using this code.`,
+          giftDetails,
           [
-            { text: 'Copy', onPress: () => {/* TODO: Copy to clipboard */ } },
+            {
+              text: 'Share',
+              onPress: () => {
+                Share.share({
+                  title: 'Spark Gift Code',
+                  message: giftDetails,
+                }).catch(() => {
+                  Alert.alert('Share Failed', 'Could not open the share sheet.');
+                });
+              },
+            },
             { text: 'Done', onPress: onClose },
           ]
         );
       } else {
         Alert.alert('Purchase Failed', 'Could not create gift code. Please try again.');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setGenerating(false);
@@ -114,11 +126,39 @@ export function GiftSparksDialog({
       return;
     }
 
-    // TODO: Implement direct gift sending
-    Alert.alert('Coming Soon', 'Direct gifting will be available soon!');
+    if (recipientUserId.trim() === userId) {
+      Alert.alert('Invalid Recipient', 'You cannot send sparks to yourself.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const totalSparks = getTotalSparks(selectedPack);
+      const result = await sendGiftDirectly(
+        userId,
+        recipientUserId.trim(),
+        totalSparks,
+        message || undefined
+      );
+
+      if (!result.success) {
+        Alert.alert('Gift Failed', result.error || 'Could not send gift. Please try again.');
+        return;
+      }
+
+      Alert.alert(
+        'Gift Sent!',
+        `${totalSparks} sparks were sent successfully.`,
+        [{ text: 'Done', onPress: onClose }]
+      );
+    } catch {
+      Alert.alert('Gift Failed', 'Could not send gift. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const packEntries: Array<[SparkPackSize, typeof SPARK_PACKS[SparkPackSize]]> = [
+  const packEntries: [SparkPackSize, typeof SPARK_PACKS[SparkPackSize]][] = [
     [100, SPARK_PACKS[100]],
     [500, SPARK_PACKS[500]],
     [1200, SPARK_PACKS[1200]],
@@ -278,11 +318,11 @@ export function GiftSparksDialog({
           <View style={styles.footer}>
             <Button
               onPress={mode === 'code' ? handlePurchaseGiftCode : handleSendDirectGift}
-              isLoading={generating}
-              disabled={!selectedPack || generating}
+              isLoading={mode === 'code' ? generating : loading}
+              disabled={!selectedPack || generating || loading}
               style={styles.purchaseButton}
             >
-              {generating ? 'Creating...' : mode === 'code' ? 'Create Gift Code' : 'Send Gift'}
+              {mode === 'code' ? (generating ? 'Creating...' : 'Create Gift Code') : (loading ? 'Sending...' : 'Send Gift')}
             </Button>
           </View>
         </View>
