@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
   Image as RNImage,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Ionicons } from '@expo/vector-icons';
 
 interface ImagePickerProps {
@@ -81,7 +81,89 @@ const ImagePickerComponent: React.FC<ImagePickerProps> = ({
   };
 
   const handleCropRotate = () => {
-    Alert.alert('Feature', 'Crop and rotate functionality coming soon!');
+    if (!selectedImage) return;
+
+    Alert.alert('Edit Image', 'Choose an edit action', [
+      {
+        text: 'Rotate 90°',
+        onPress: async () => {
+          setLoading(true);
+          try {
+            const result = await ImageManipulator.manipulateAsync(
+              selectedImage,
+              [{ rotate: 90 }],
+              { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            setSelectedImage(result.uri);
+          } catch (error) {
+            console.error('Error rotating image:', error);
+            Alert.alert('Error', 'Failed to rotate image');
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+      {
+        text: 'Center Crop (4:3)',
+        onPress: async () => {
+          setLoading(true);
+          try {
+            const imageInfo = await ImageManipulator.manipulateAsync(
+              selectedImage,
+              [],
+              { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+            );
+
+            const targetAspect = 4 / 3;
+            const width = imageInfo.width;
+            const height = imageInfo.height;
+            let cropWidth = width;
+            let cropHeight = Math.round(width / targetAspect);
+
+            if (cropHeight > height) {
+              cropHeight = height;
+              cropWidth = Math.round(height * targetAspect);
+            }
+
+            const originX = Math.max(0, Math.floor((width - cropWidth) / 2));
+            const originY = Math.max(0, Math.floor((height - cropHeight) / 2));
+
+            const cropped = await ImageManipulator.manipulateAsync(
+              selectedImage,
+              [{ crop: { originX, originY, width: cropWidth, height: cropHeight } }],
+              { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            setSelectedImage(cropped.uri);
+          } catch (error) {
+            console.error('Error cropping image:', error);
+            Alert.alert('Error', 'Failed to crop image');
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleCompress = async () => {
+    if (!selectedImage) return;
+
+    setLoading(true);
+    try {
+      const compressed = await ImageManipulator.manipulateAsync(
+        selectedImage,
+        [],
+        { compress: 0.55, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      setSelectedImage(compressed.uri);
+      Alert.alert('Success', 'Image compressed successfully.');
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      Alert.alert('Error', 'Failed to compress image');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -194,9 +276,7 @@ const ImagePickerComponent: React.FC<ImagePickerProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={() => {
-                  Alert.alert('Feature', 'Image compression coming soon!');
-                }}
+                onPress={handleCompress}
                 accessibilityLabel="Compress"
               >
                 <Ionicons name="resize" size={20} color="#333" />
